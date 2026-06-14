@@ -138,25 +138,32 @@ tests cover parsing + resolution + merge.
 
 ## Progress log
 
-### 3a — official-page adapter (started 2026-06-14)
+### 3a — official-page adapter (2026-06-14)
 - **Adapter implemented** (`src/lib/sources/official-page.ts`) — no longer a stub. Robots-aware
   descriptive UA, 25s timeout, week-long cache (Next runtime), graceful `[]` on
-  failure/unregistered pages (never invents rosters). Parser registry; ingestion via
-  `scripts/ingest-official.mjs`; fixture-tested (`tests/official-page.test.ts`).
-- **MIT EECS ✅ DONE** — 180 real faculty ingested with verified `department_page` source
-  (confidence 0.90), real titles + homepage URLs, routed to CS/EE by the page's area tag. 7 matched
-  existing OpenAlex records (homepages filled = upgraded); 173 roster-only faculty added.
-- **Recon findings (important):** rosters vary even within a school — MIT DMSE uses different markup
-  (roster at `/people/faculty/`, no shared theme with EECS); Stanford department pages are
-  **JS-rendered** (e.g. `mse.stanford.edu` is a ~14KB shell) with no reachable public JSON:API and
-  the CAP `cap/profiles` endpoint 404s.
-- **Still TODO in 3a:**
-  - Other MIT departments (DMSE, ME/MechE, ChemE, NucE, AeroAstro, BME, CEE, Math, Physics,
-    Chemistry, MatSci) — one parser per site shape.
-  - **Stanford** needs either (a) headless rendering (Playwright/render service) of department
-    pages, (b) each department's underlying data endpoint if one exists, or (c) Stanford Profiles
-    CAP API access. Until one is wired, Stanford keeps only its OpenAlex-derived (inferred) data —
-    no fabricated roster.
+  failure/unregistered pages (never invents rosters). Combined parser registry; ingestion via
+  `scripts/ingest-official.mjs` (HTML + paginated JSON sources); fixture-tested
+  (`tests/official-page.test.ts`, 8 cases).
+- **MIT ✅** — **235 verified faculty**:
+  - EECS (`mit-eecs` HTML parser): 180 faculty, routed CS/EE by the page's area tag.
+  - DMSE (`mit-teaser` HTML parser): 56 faculty.
+- **Stanford ✅ (no Playwright needed!)** — **160 verified faculty**. Key find: Stanford
+  School-of-Engineering department sites expose a **Drupal JSON:API** at
+  `https://<dept>.stanford.edu/jsonapi/node/stanford_person`. The `stanford` parser reads it as
+  structured JSON (name, full title, Stanford Profiles homepage, email, research interests) and
+  keeps only professorial faculty (drops emeritus/lecturer/visiting). Ingested: MSE, ChemE,
+  AeroAstro (aa), BioEngineering. Pagination followed in the ingestion script.
+- All carry a verified `department_page` source (confidence 0.90) with real homepage URLs; matched
+  faculty upgrade their existing OpenAlex record, unmatched are inserted from the authoritative
+  roster.
+- **Still TODO in 3a (just add config entries — parsers exist):**
+  - More MIT departments — most MIT dept sites are either the EECS WordPress shape or the
+    `faculty-teaser` shape, so they likely reuse the two existing parsers (verify per site).
+  - More Stanford SoE departments sharing the JSON:API (e.g. ME, civil/CEE) — add `SP("<sub>")`
+    entries. Stanford EE (`ee.stanford.edu`) and CS use a different platform (404/301) — need their
+    own parser.
+  - Minor cleanup: a few Stanford medical-affiliated names include credential suffixes
+    (", MD, FACS"); strip trailing credentials for display/matching.
 
 ## Out of scope (later)
 - Schools beyond the 7 seeded; non-US programs.

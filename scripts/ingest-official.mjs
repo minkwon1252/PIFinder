@@ -16,6 +16,7 @@
  */
 import pg from "pg";
 import { MIT_PARSERS } from "../src/lib/sources/parsers/mit.mjs";
+import { parseStanfordPersonsObj } from "../src/lib/sources/parsers/stanford.mjs";
 
 const dbUrl = process.env.SUPABASE_DB_URL;
 if (!dbUrl) { console.error("ERROR: SUPABASE_DB_URL is not set."); process.exit(1); }
@@ -30,10 +31,21 @@ function routeEecs(areaTag) {
   return depts.length ? depts : ["CS", "EE"]; // unknown → both (EECS spans both)
 }
 
-// Registered rosters. Add an entry per (school, page) as a parser is written.
+// Registered rosters. `kind` html → parsed by MIT_PARSERS[parser]; json → Stanford
+// JSON:API (paginated). `route(areaTag)` returns dept abbrevs; or fixed `dept`.
+const SP = (sub) => `https://${sub}.stanford.edu/jsonapi/node/stanford_person?page%5Blimit%5D=50`;
 const SOURCES = [
-  { schoolShort: "MIT", url: "https://www.eecs.mit.edu/role/faculty/", parser: "mit-eecs", route: routeEecs },
+  // MIT
+  { schoolShort: "MIT", kind: "html", url: "https://www.eecs.mit.edu/role/faculty/", parser: "mit-eecs", route: routeEecs },
+  { schoolShort: "MIT", kind: "html", url: "https://dmse.mit.edu/people/faculty/", parser: "mit-teaser", dept: "MSE" },
+  // Stanford (Drupal JSON:API)
+  { schoolShort: "Stanford", kind: "json", url: SP("mse"), dept: "MSE" },
+  { schoolShort: "Stanford", kind: "json", url: SP("cheme"), dept: "ChemE" },
+  { schoolShort: "Stanford", kind: "json", url: SP("aa"), dept: "AeroE" },
+  { schoolShort: "Stanford", kind: "json", url: SP("bioengineering"), dept: "BME" },
 ];
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Normalize a name for matching: lowercase, strip accents/punctuation.
 const norm = (s) => s.normalize("NFKD").replace(/[̀-ͯ]/g, "")
@@ -44,6 +56,26 @@ async function fetchHtml(url) {
   const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: AbortSignal.timeout(25_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
+}
+
+async function fetchJson(url) {
+  const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/vnd.api+json" }, signal: AbortSignal.timeout(25_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// Stanford JSON:API → all faculty, following pagination.
+async function fetchStanford(url) {
+  const faculty = [];
+  let next = url, pages = 0;
+  while (next && pages < 20) {
+    const json = await fetchJson(next);
+    faculty.push(...parseStanfordPersonsObj(json));
+    next = json?.links?.next?.href ?? null;
+    pages++;
+    await sleep(300);
+  }
+  return faculty;
 }
 
 async function main() {
@@ -62,8 +94,9 @@ async function main() {
 
     let faculty;
     try {
-      const html = await fetchHtml(src.url);
-      faculty = MIT_PARSERS[src.parser](html, src.url);
+      faculty = src.kind === "json"
+        ? await fetchStanford(src.url)
+        : MIT_PARSERS[src.parser](await fetchHtml(src.url), src.url);
     } catch (e) { console.warn(`  ✗ fetch/parse failed: ${e.message}`); continue; }
     console.log(`  parsed ${faculty.length} faculty`);
     totFaculty += faculty.length;
@@ -89,8 +122,8 @@ async function main() {
         }
       } else {
         const ins = await client.query(
-          `insert into public.professors (full_name, homepage_url, research_themes) values ($1, $2, $3) returning id`,
-          [f.fullName, f.homepageUrl ?? null, f.researchThemes ?? []]);
+          `insert into public.professors (full_name, research_identity, homepage_url, research_themes) values ($1, $2, $3, $4) returning id`,
+          [f.fullName, f.researchIdentity ?? null, f.homepageUrl ?? null, f.researchThemes ?? []]);
         profId = ins.rows[0].id;
         totInserted++;
         // register so a person on multiple dept-routes isn't inserted twice
@@ -107,8 +140,9 @@ async function main() {
            values ($1, 'department_page', $2, 0.90, $3)`, [profId, src.url, f.title ?? null]);
       }
 
-      // Verified affiliation per routed department.
-      for (const abbrev of src.route(f.areaTag)) {
+      // Verified affiliation per department (routed by area tag, or fixed).
+      const depts = src.route ? src.route(f.areaTag) : [src.dept];
+      for (const abbrev of depts) {
         const dId = deptId.get(abbrev);
         if (!dId) continue;
         const aff = await client.query(

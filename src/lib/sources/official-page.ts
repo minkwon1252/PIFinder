@@ -5,6 +5,10 @@ import type {
 } from "./types";
 // Shared, Node+Next-portable parsers (also used by scripts/ingest-official.mjs).
 import { MIT_PARSERS } from "./parsers/mit.mjs";
+import { parseStanfordPersons } from "./parsers/stanford.mjs";
+
+/** Combined parser registry. Each parser takes (responseText, url) → faculty. */
+const PARSERS = { ...MIT_PARSERS, stanford: parseStanfordPersons };
 
 /**
  * Official department/lab page adapter (Phase 3a).
@@ -12,14 +16,16 @@ import { MIT_PARSERS } from "./parsers/mit.mjs";
  * Source of record for affiliation + roster membership. Faculty rosters vary per
  * university, so parsing is per-page via a registry; an entry maps a department
  * page URL to a parser id. Implemented so far:
- *   - MIT EECS ("mit-eecs") — static HTML, ~170 faculty with title + homepage.
+ *   - MIT EECS ("mit-eecs") and MIT faculty-teaser sites ("mit-teaser") — static HTML.
+ *   - Stanford ("stanford") — department Drupal JSON:API (response is JSON; the parser
+ *     JSON-parses the text). This single fetch reads the first page only; the ingestion
+ *     script (scripts/ingest-official.mjs) follows JSON:API pagination.
  *
- * Pages we can't yet parse (other MIT departments, JS-rendered Stanford pages)
- * are simply not registered, so search() returns [] for them — we never invent
- * roster data. Every emitted professor carries a `department_page` source.
+ * Unregistered school+dept pairs return [] — we never invent roster data. Every
+ * emitted professor carries a `department_page` source.
  *
  * Compliance: a descriptive User-Agent is sent, requests time out, and callers
- * should cache (the ingestion script does). MIT robots.txt permits these paths.
+ * should cache (the ingestion script does). robots.txt permits these paths.
  */
 
 const UA = "PIFinderBot/0.1 (+https://pi-finder-ten.vercel.app; SNU STEM research project)";
@@ -29,7 +35,7 @@ export interface OfficialPageEntry {
   schoolShort: string;
   deptAbbrev: string;
   url: string;
-  parser: keyof typeof MIT_PARSERS;
+  parser: keyof typeof PARSERS;
 }
 
 export class OfficialPageAdapter implements ProfessorSourceAdapter {
@@ -48,7 +54,7 @@ export class OfficialPageAdapter implements ProfessorSourceAdapter {
     const entry = this.entryFor(query);
     if (!entry) return []; // no registered roster for this school+dept → nothing invented
 
-    const parse = MIT_PARSERS[entry.parser];
+    const parse = PARSERS[entry.parser];
     if (!parse) return [];
 
     let html: string;

@@ -17,6 +17,7 @@
  * @property {string} [homepageUrl]  Official profile URL.
  * @property {string} [email]
  * @property {string} [areaTag]      Bracketed area tag (e.g. "EE and AI+D"), MIT EECS only.
+ * @property {string} [researchIdentity]
  * @property {string[]} researchThemes
  */
 
@@ -73,7 +74,32 @@ export function parseMitEecsFaculty(html, _pageUrl) {
   return out;
 }
 
+/**
+ * MIT "faculty-teaser" card layout (e.g. DMSE https://dmse.mit.edu/people/faculty/).
+ * Structure: <a href="…/people/faculty/slug/"> … <h2 class="faculty-teaser__name">Name</h2>
+ *   <div class="faculty-teaser__title">Title</div></a>
+ * @param {string} html @param {string} _pageUrl
+ * @returns {ParsedFaculty[]}
+ */
+export function parseMitFacultyTeaser(html, _pageUrl) {
+  const out = [];
+  const re = /<a href="(https:\/\/[a-z0-9.-]+\.mit\.edu\/people\/faculty\/[^"]+)"[^>]*>[\s\S]*?faculty-teaser__name[^>]*>\s*([^<]+?)\s*<\/h2>\s*<div class="faculty-teaser__title"[^>]*>\s*([^<]*?)\s*<\/div>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const fullName = clean(m[2]);
+    if (!fullName) continue;
+    out.push({
+      fullName,
+      title: clean(m[3]) || undefined,
+      homepageUrl: m[1],
+      researchThemes: [],
+    });
+  }
+  return out;
+}
+
 /** Registry of MIT parsers keyed by id. */
 export const MIT_PARSERS = {
   "mit-eecs": parseMitEecsFaculty,
+  "mit-teaser": parseMitFacultyTeaser,
 };

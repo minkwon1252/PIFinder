@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseMitEecsFaculty } from "@/lib/sources/parsers/mit.mjs";
+import { parseStanfordPersonsObj } from "@/lib/sources/parsers/stanford.mjs";
 
 // Fixture mirrors the real MIT EECS people-page markup (verified 2026-06).
 const FIXTURE = `
@@ -43,5 +44,43 @@ describe("MIT EECS faculty parser", () => {
 
   it("never throws on unexpected markup (returns [])", () => {
     expect(parseMitEecsFaculty("<html>no faculty here</html>", "x")).toEqual([]);
+  });
+});
+
+describe("Stanford JSON:API person parser", () => {
+  const page = {
+    data: [
+      {
+        attributes: {
+          title: "Jane Researcher",
+          su_person_full_title: "Associate Professor of Materials Science and Engineering",
+          su_person_email: "jane@stanford.edu",
+          su_person_profile_link: { uri: "https://profiles.stanford.edu/12345" },
+          su_person_research_interests: { value: "<p>Batteries and <b>solid electrolytes</b>.</p>" },
+        },
+      },
+      // emeritus → excluded
+      { attributes: { title: "Old Prof", su_person_full_title: "Professor of Chemistry, Emeritus" } },
+      // non-faculty (PI) → excluded
+      { attributes: { title: "Some Investigator", su_person_full_title: "Principal Investigator" } },
+    ],
+  };
+  const rows = parseStanfordPersonsObj(page);
+
+  it("keeps professorial faculty and drops emeritus / non-faculty", () => {
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.fullName).toBe("Jane Researcher");
+  });
+
+  it("maps title, email, and the Stanford Profiles homepage", () => {
+    expect(rows[0]).toMatchObject({
+      title: "Associate Professor of Materials Science and Engineering",
+      email: "jane@stanford.edu",
+      homepageUrl: "https://profiles.stanford.edu/12345",
+    });
+  });
+
+  it("derives a research identity from interests with HTML stripped", () => {
+    expect(rows[0]?.researchIdentity).toBe("Batteries and solid electrolytes.");
   });
 });
