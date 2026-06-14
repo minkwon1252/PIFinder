@@ -1,0 +1,24 @@
+# Production overlay for the club server.
+# Run with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Secrets come from /home/stem/apps/PIFinder/.env.production on the server.
+# That file is NOT committed to git.
+services:
+  app:
+    container_name: pifinder-prod
+    env_file:
+      - .env.production
+    ports:
+      - "127.0.0.1:3000:3000" # bind to localhost; put nginx/caddy in front for TLS
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
