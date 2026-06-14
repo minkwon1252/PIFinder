@@ -156,14 +156,15 @@ tests cover parsing + resolution + merge.
 - All carry a verified `department_page` source (confidence 0.90) with real homepage URLs; matched
   faculty upgrade their existing OpenAlex record, unmatched are inserted from the authoritative
   roster.
-- **Still TODO in 3a (just add config entries — parsers exist):**
-  - More MIT departments — most MIT dept sites are either the EECS WordPress shape or the
-    `faculty-teaser` shape, so they likely reuse the two existing parsers (verify per site).
-  - More Stanford SoE departments sharing the JSON:API (e.g. ME, civil/CEE) — add `SP("<sub>")`
-    entries. Stanford EE (`ee.stanford.edu`) and CS use a different platform (404/301) — need their
-    own parser.
-  - Minor cleanup: a few Stanford medical-affiliated names include credential suffixes
-    (", MD, FACS"); strip trailing credentials for display/matching.
+- **Fan-out done (2026-06-14):** **325 verified MIT + 254 verified Stanford faculty.**
+  - MIT parsers: `mit-eecs` (EECS→CS/EE), `mit-teaser` (DMSE), `mit-cheme` (ChemE), `mit-cee` (CEE).
+  - Stanford JSON:API depts: MSE, ChemE, AeroAstro, BioE, ME, CEE, MS&E→ISE.
+- **Still TODO in 3a:**
+  - MIT MechE (`meche` — JS-rendered) and AeroAstro (different markup) need their own parsers/approach.
+  - Stanford EE (`ee.stanford.edu`) and CS use a different platform (404/301) — own parser needed.
+  - MIT departments with no standalone site in our list (BME/NucE/AP/PHYS/CHEM/MATH/ISE) — decide
+    sources (e.g. physics.mit.edu, nse.mit.edu) per dept.
+  - Minor cleanup: strip credential suffixes (", MD, FACS") from some Stanford names.
 
 ## Out of scope (later)
 - Schools beyond the 7 seeded; non-US programs.

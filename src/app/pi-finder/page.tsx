@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { startPiFinderRun } from "./actions";
+import { RunButton } from "./RunButton";
 
 export default async function PiFinderPage({
   searchParams,
@@ -36,9 +37,7 @@ export default async function PiFinderPage({
             For each school and each relevant department, recommend three professors. Departments
             expand by tier (Reach = broad, Foundation = focused).
           </p>
-          <button className="btn-primary mt-4" type="submit">
-            Run department list
-          </button>
+          <RunButton label="Run department list" />
         </form>
 
         <form action={startPiFinderRun} className="card">
@@ -47,15 +46,13 @@ export default async function PiFinderPage({
           <p className="mt-1 text-sm text-slate-600">
             Recommend the single strongest professor match per school.
           </p>
-          <button className="btn-primary mt-4" type="submit">
-            Run ultimate match
-          </button>
+          <RunButton label="Run ultimate match" />
         </form>
       </div>
 
       <p className="mt-6 text-xs text-slate-500">
-        MVP uses seeded sample professor data marked <code>[SAMPLE]</code>. Real source adapters
-        (OpenAlex, Semantic Scholar, official pages) are wired in Phase 3.
+        Professor data is real, sourced from OpenAlex and official department pages with provenance.
+        Department attribution is being refined; verify details before contacting anyone.
       </p>
     </AppShell>
   );

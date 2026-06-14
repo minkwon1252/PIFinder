@@ -35,14 +35,20 @@ function routeEecs(areaTag) {
 // JSON:API (paginated). `route(areaTag)` returns dept abbrevs; or fixed `dept`.
 const SP = (sub) => `https://${sub}.stanford.edu/jsonapi/node/stanford_person?page%5Blimit%5D=50`;
 const SOURCES = [
-  // MIT
+  // MIT — one parser per department site (markup differs per site).
   { schoolShort: "MIT", kind: "html", url: "https://www.eecs.mit.edu/role/faculty/", parser: "mit-eecs", route: routeEecs },
   { schoolShort: "MIT", kind: "html", url: "https://dmse.mit.edu/people/faculty/", parser: "mit-teaser", dept: "MSE" },
-  // Stanford (Drupal JSON:API)
+  { schoolShort: "MIT", kind: "html", url: "https://cheme.mit.edu/people/faculty/", parser: "mit-cheme", dept: "ChemE" },
+  { schoolShort: "MIT", kind: "html", url: "https://cee.mit.edu/people/faculty/", parser: "mit-cee", dept: "CEE" },
+  // MIT MechE (meche) and AeroAstro use JS-rendered / other markup → TODO parsers.
+  // Stanford — shared School-of-Engineering Drupal JSON:API.
   { schoolShort: "Stanford", kind: "json", url: SP("mse"), dept: "MSE" },
   { schoolShort: "Stanford", kind: "json", url: SP("cheme"), dept: "ChemE" },
   { schoolShort: "Stanford", kind: "json", url: SP("aa"), dept: "AeroE" },
   { schoolShort: "Stanford", kind: "json", url: SP("bioengineering"), dept: "BME" },
+  { schoolShort: "Stanford", kind: "json", url: SP("me"), dept: "ME" },
+  { schoolShort: "Stanford", kind: "json", url: SP("cee"), dept: "CEE" },
+  { schoolShort: "Stanford", kind: "json", url: SP("msande"), dept: "ISE" },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

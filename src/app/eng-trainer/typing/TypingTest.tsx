@@ -3,10 +3,16 @@
 import { useMemo, useRef, useState } from "react";
 import { saveTypingAttempt } from "./actions";
 
-const SAMPLE =
-  "Graduate research requires persistence, clear writing, and the ability to read scientific literature critically. A strong statement of purpose connects your past projects to a professor's current work.";
+const FALLBACK = [
+  "Graduate research requires persistence, clear writing, and the ability to read scientific literature critically. A strong statement of purpose connects your past projects to a professor's current work.",
+];
 
-export function TypingTest() {
+export function TypingTest({ passages }: { passages: string[] }) {
+  const pool = passages.length > 0 ? passages : FALLBACK;
+  // Start at a random passage so repeat visits differ.
+  const [index, setIndex] = useState(() => Math.floor(Math.random() * pool.length));
+  const sample = pool[index % pool.length] ?? FALLBACK[0]!;
+
   const [value, setValue] = useState("");
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [result, setResult] = useState<{ wpm: number; accuracy: number; seconds: number } | null>(
@@ -16,35 +22,32 @@ export function TypingTest() {
 
   const correctChars = useMemo(() => {
     let n = 0;
-    for (let i = 0; i < value.length; i++) if (value[i] === SAMPLE[i]) n++;
+    for (let i = 0; i < value.length; i++) if (value[i] === sample[i]) n++;
     return n;
-  }, [value]);
+  }, [value, sample]);
 
   function onChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const v = e.target.value;
     if (!startedAt && v.length > 0) setStartedAt(Date.now());
     setValue(v);
 
-    if (v.length >= SAMPLE.length && startedAt) {
+    if (v.length >= sample.length && startedAt) {
       const seconds = (Date.now() - startedAt) / 1000;
-      const words = SAMPLE.split(/\s+/).length;
+      const words = sample.split(/\s+/).length;
       const wpm = Math.round((words / seconds) * 60);
-      const accuracy = Math.round((correctChars / SAMPLE.length) * 1000) / 10;
+      const accuracy = Math.round((correctChars / sample.length) * 1000) / 10;
       const r = { wpm, accuracy, seconds: Math.round(seconds) };
       setResult(r);
       if (!saved.current) {
         saved.current = true;
-        void saveTypingAttempt({
-          wpm,
-          accuracy,
-          durationSeconds: r.seconds,
-          sampleText: SAMPLE,
-        });
+        void saveTypingAttempt({ wpm, accuracy, durationSeconds: r.seconds, sampleText: sample });
       }
     }
   }
 
-  function reset() {
+  // Advance to the next passage (new sentence) and reset the test.
+  function nextPassage() {
+    setIndex((i) => (i + 1) % pool.length);
     setValue("");
     setStartedAt(null);
     setResult(null);
@@ -53,8 +56,18 @@ export function TypingTest() {
 
   return (
     <div className="card">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs text-slate-500">
+          Passage {(index % pool.length) + 1} of {pool.length}
+        </span>
+        {!result && (
+          <button onClick={nextPassage} className="btn-ghost text-xs" type="button">
+            Skip / new passage
+          </button>
+        )}
+      </div>
       <p className="rounded bg-slate-50 p-3 font-mono text-sm leading-relaxed text-slate-700">
-        {SAMPLE.split("").map((ch, i) => {
+        {sample.split("").map((ch, i) => {
           const typed = value[i];
           const cls =
             typed == null ? "text-slate-400" : typed === ch ? "text-emerald-600" : "bg-red-100 text-red-700";
@@ -81,8 +94,8 @@ export function TypingTest() {
             <strong>{result.accuracy}</strong>% accuracy
           </span>
           <span>{result.seconds}s</span>
-          <button onClick={reset} className="btn-ghost text-xs">
-            Try again
+          <button onClick={nextPassage} className="btn-primary text-xs" type="button">
+            Next passage →
           </button>
         </div>
       )}

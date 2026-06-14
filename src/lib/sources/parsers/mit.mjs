@@ -98,8 +98,60 @@ export function parseMitFacultyTeaser(html, _pageUrl) {
   return out;
 }
 
+/**
+ * MIT ChemE (https://cheme.mit.edu/people/faculty/): <h2 class="faculty-name">
+ * <a href="…/profile/slug/">Name<i…</a></h2> … faculty-title.
+ * @param {string} html @param {string} _pageUrl @returns {ParsedFaculty[]}
+ */
+export function parseMitChemE(html, _pageUrl) {
+  const out = [];
+  const re = /<h2 class="faculty-name"><a href="(https:\/\/cheme\.mit\.edu\/[^"]+)"[^>]*>([^<]+?)\s*<(?:i|\/a)/gi;
+  const starts = [];
+  let m;
+  while ((m = re.exec(html))) starts.push({ idx: m.index, url: m[1], name: m[2] });
+  for (let i = 0; i < starts.length; i++) {
+    const cur = starts[i];
+    if (!cur) continue;
+    const next = starts[i + 1];
+    const seg = html.slice(cur.idx, next ? next.idx : cur.idx + 1500);
+    const t = seg.match(/faculty-title[^>]*>\s*([^<]+)/i);
+    const fullName = clean(cur.name);
+    if (!fullName) continue;
+    out.push({ fullName, title: t ? clean(t[1]) : undefined, homepageUrl: cur.url, researchThemes: [] });
+  }
+  return out;
+}
+
+/**
+ * MIT CEE (https://cee.mit.edu/people/faculty/): <a href="…/individual/slug/"
+ * class="people-item … faculty …"> … <h3>Name</h3> <span class="profile-title">
+ * Title</span> <span class="profile-intro">…</span>.
+ * @param {string} html @param {string} _pageUrl @returns {ParsedFaculty[]}
+ */
+export function parseMitCee(html, _pageUrl) {
+  const out = [];
+  const re = /<a href="([^"]*individual\/[^"]+)" class="people-item[^"]*\bfaculty\b[^"]*">[\s\S]*?<h3>([^<]+)<\/h3>\s*<span class="profile-title">([^<]*)<\/span>(?:\s*<span class="profile-intro">([^<]*)<\/span>)?/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const fullName = clean(m[2]);
+    if (!fullName) continue;
+    let url = m[1] ?? "";
+    if (url.startsWith("/")) url = `https://cee.mit.edu${url}`;
+    out.push({
+      fullName,
+      title: clean(m[3]) || undefined,
+      homepageUrl: url || undefined,
+      researchIdentity: clean(m[4]) || undefined,
+      researchThemes: [],
+    });
+  }
+  return out;
+}
+
 /** Registry of MIT parsers keyed by id. */
 export const MIT_PARSERS = {
   "mit-eecs": parseMitEecsFaculty,
   "mit-teaser": parseMitFacultyTeaser,
+  "mit-cheme": parseMitChemE,
+  "mit-cee": parseMitCee,
 };

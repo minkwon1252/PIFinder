@@ -73,14 +73,41 @@ insert into public.screening_questions (key, prompt, options, weight_hint) value
 on conflict (key) do nothing;
 
 -- ---- TOEFL practice sets (ENG Trainer MVP) ----
-insert into public.toefl_practice_sets (title, prompt, kind, time_limit_seconds) values
+-- ENG Trainer content. Idempotent via NOT EXISTS (no unique constraint on title).
+-- 'writing' = TOEFL-style prompts; 'typing' = academic passages for the typing test.
+insert into public.toefl_practice_sets (title, prompt, kind, time_limit_seconds)
+select v.title, v.prompt, v.kind, v.tl
+from (values
   ('Independent Writing — Technology',
-   'Do you agree or disagree: Modern technology has made students less creative? Use specific reasons and examples.',
-   'writing', 1800),
+   'Do you agree or disagree: Modern technology has made students less creative? Use specific reasons and examples.', 'writing', 1800),
   ('Independent Writing — Graduate Study',
-   'Some students prefer to work for a few years before graduate school; others apply immediately. Which do you prefer and why?',
-   'writing', 1800)
-on conflict do nothing;
+   'Some students prefer to work for a few years before graduate school; others apply immediately. Which do you prefer and why?', 'writing', 1800),
+  ('Independent Writing — Collaboration',
+   'Do you agree or disagree: scientific progress depends more on collaboration than on individual genius? Use specific reasons and examples.', 'writing', 1800),
+  ('Independent Writing — Funding',
+   'Some argue governments should fund basic research with no obvious application; others prefer applied research. Which do you support and why?', 'writing', 1800),
+  ('Independent Writing — Online Learning',
+   'Do you agree or disagree: online courses are as effective as in-person classes for graduate study? Support your view with examples.', 'writing', 1800),
+  ('Independent Writing — Specialization',
+   'Is it better for a researcher to specialize deeply in one area or to work across several fields? Explain your reasoning with examples.', 'writing', 1800),
+  ('Typing — Literature Review',
+   'A literature review situates your research within the existing body of knowledge, identifying the gaps that your work will address and clarifying the questions that remain unanswered.', 'typing', null),
+  ('Typing — Reproducibility',
+   'Reproducibility is a cornerstone of the scientific method; carefully documenting your methods allows other researchers to verify, challenge, and build upon your results.', 'typing', null),
+  ('Typing — Statement of Purpose',
+   'When writing a statement of purpose, connect your previous projects to the specific research a prospective advisor pursues, showing why their laboratory is the right place for your goals.', 'typing', null),
+  ('Typing — Peer Review',
+   'Peer review subjects a manuscript to the scrutiny of independent experts, improving its clarity, validity, and significance before it reaches the wider scientific community.', 'typing', null),
+  ('Typing — Experimental Design',
+   'Strong experimental design controls for confounding variables, ensuring that observed effects can be attributed to the factors under investigation rather than to chance.', 'typing', null),
+  ('Typing — Resilience',
+   'Graduate study demands not only technical skill but also resilience, because meaningful research often advances through repeated failure before a genuine insight finally emerges.', 'typing', null),
+  ('Typing — Figures',
+   'Clear figures communicate complex results at a glance; a well-labeled axis and an informative caption often persuade a reader more effectively than several paragraphs of dense text.', 'typing', null),
+  ('Typing — Interdisciplinary',
+   'Effective collaboration across disciplines requires a shared vocabulary, mutual respect for different methods, and the patience to translate ideas between distinct research traditions.', 'typing', null)
+) as v(title, prompt, kind, tl)
+where not exists (select 1 from public.toefl_practice_sets t where t.title = v.title);
 
 -- =============================================================================
 -- Department faculty-roster URLs (consumed by the official-page adapter, Phase 3).
