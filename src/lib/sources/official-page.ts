@@ -3,22 +3,84 @@ import type {
   ProfessorSearchQuery,
   ProfessorSourceAdapter,
 } from "./types";
+// Shared, Node+Next-portable parsers (also used by scripts/ingest-official.mjs).
+import { MIT_PARSERS } from "./parsers/mit.mjs";
 
 /**
- * Official department/lab/admissions page adapter (Phase 3).
+ * Official department/lab page adapter (Phase 3a).
  *
- * This is the source of record for affiliation + lab membership. In production
- * this would fetch the school_departments.faculty_url, parse the faculty roster
- * (respecting robots.txt), and emit a source record per professor. It is left
- * as an interface-complete stub for MVP — wiring a real fetch/parse here is a
- * Phase 3 task and must store source_url + retrieved_at + confidence.
+ * Source of record for affiliation + roster membership. Faculty rosters vary per
+ * university, so parsing is per-page via a registry; an entry maps a department
+ * page URL to a parser id. Implemented so far:
+ *   - MIT EECS ("mit-eecs") — static HTML, ~170 faculty with title + homepage.
+ *
+ * Pages we can't yet parse (other MIT departments, JS-rendered Stanford pages)
+ * are simply not registered, so search() returns [] for them — we never invent
+ * roster data. Every emitted professor carries a `department_page` source.
+ *
+ * Compliance: a descriptive User-Agent is sent, requests time out, and callers
+ * should cache (the ingestion script does). MIT robots.txt permits these paths.
  */
+
+const UA = "PIFinderBot/0.1 (+https://pi-finder-ten.vercel.app; SNU STEM research project)";
+
+/** url + which parser handles it, keyed by `${schoolShort}|${deptAbbrev}`. */
+export interface OfficialPageEntry {
+  schoolShort: string;
+  deptAbbrev: string;
+  url: string;
+  parser: keyof typeof MIT_PARSERS;
+}
+
 export class OfficialPageAdapter implements ProfessorSourceAdapter {
   readonly id = "official_page";
 
-  async search(_query: ProfessorSearchQuery): Promise<ProfessorRecord[]> {
-    // Intentionally returns nothing until a compliant fetch/parse is wired in.
-    // Returning [] (not throwing) keeps the pipeline graceful.
-    return [];
+  constructor(private entries: OfficialPageEntry[] = []) {}
+
+  /** Find the registered entry for a query, if any. */
+  private entryFor(query: ProfessorSearchQuery): OfficialPageEntry | undefined {
+    return this.entries.find(
+      (e) => e.schoolShort === query.schoolName && e.deptAbbrev === query.departmentAbbrev,
+    );
+  }
+
+  async search(query: ProfessorSearchQuery): Promise<ProfessorRecord[]> {
+    const entry = this.entryFor(query);
+    if (!entry) return []; // no registered roster for this school+dept → nothing invented
+
+    const parse = MIT_PARSERS[entry.parser];
+    if (!parse) return [];
+
+    let html: string;
+    try {
+      const res = await fetch(entry.url, {
+        headers: { "User-Agent": UA, Accept: "text/html" },
+        signal: AbortSignal.timeout(25_000),
+        next: { revalidate: 7 * 24 * 3600 }, // cache a week (Next runtime)
+      });
+      if (!res.ok) return [];
+      html = await res.text();
+    } catch {
+      return []; // network/timeout → graceful empty, not a thrown run
+    }
+
+    const now = new Date().toISOString();
+    return parse(html, entry.url).map((f): ProfessorRecord => ({
+      fullName: f.fullName,
+      homepageUrl: f.homepageUrl,
+      researchThemes: f.researchThemes ?? [],
+      schoolName: query.schoolName,
+      departmentAbbrev: query.departmentAbbrev,
+      title: f.title,
+      sources: [
+        {
+          sourceType: "department_page",
+          sourceUrl: entry.url,
+          retrievedAt: now,
+          confidence: 0.9, // authoritative for affiliation/title/homepage
+          rawExcerpt: f.title,
+        },
+      ],
+    }));
   }
 }

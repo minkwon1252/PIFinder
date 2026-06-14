@@ -136,6 +136,28 @@ tests cover parsing + resolution + merge.
 3. **3d UI/provenance wiring** →
 4. **3e orchestration/tests**, then scale 3a to all 7 schools × 14 depts.
 
+## Progress log
+
+### 3a — official-page adapter (started 2026-06-14)
+- **Adapter implemented** (`src/lib/sources/official-page.ts`) — no longer a stub. Robots-aware
+  descriptive UA, 25s timeout, week-long cache (Next runtime), graceful `[]` on
+  failure/unregistered pages (never invents rosters). Parser registry; ingestion via
+  `scripts/ingest-official.mjs`; fixture-tested (`tests/official-page.test.ts`).
+- **MIT EECS ✅ DONE** — 180 real faculty ingested with verified `department_page` source
+  (confidence 0.90), real titles + homepage URLs, routed to CS/EE by the page's area tag. 7 matched
+  existing OpenAlex records (homepages filled = upgraded); 173 roster-only faculty added.
+- **Recon findings (important):** rosters vary even within a school — MIT DMSE uses different markup
+  (roster at `/people/faculty/`, no shared theme with EECS); Stanford department pages are
+  **JS-rendered** (e.g. `mse.stanford.edu` is a ~14KB shell) with no reachable public JSON:API and
+  the CAP `cap/profiles` endpoint 404s.
+- **Still TODO in 3a:**
+  - Other MIT departments (DMSE, ME/MechE, ChemE, NucE, AeroAstro, BME, CEE, Math, Physics,
+    Chemistry, MatSci) — one parser per site shape.
+  - **Stanford** needs either (a) headless rendering (Playwright/render service) of department
+    pages, (b) each department's underlying data endpoint if one exists, or (c) Stanford Profiles
+    CAP API access. Until one is wired, Stanford keeps only its OpenAlex-derived (inferred) data —
+    no fabricated roster.
+
 ## Out of scope (later)
 - Schools beyond the 7 seeded; non-US programs.
 - Lab-member extraction; advisor-network graph.
