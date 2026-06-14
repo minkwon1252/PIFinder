@@ -33,7 +33,7 @@ Stack: Next.js (App Router) · TypeScript · Tailwind CSS · Supabase (Auth, Pos
 Requirements: Node 20+ (tested on Node 24), npm 11, and `psql` (for migrations).
 
 ```bash
-git clone <your-fork-or-remote> PIFinder
+git clone git@github.com:minkwon1252/PIFinder.git
 cd PIFinder
 npm install
 cp .env.example .env.local      # then fill in values (see §3)
@@ -108,13 +108,21 @@ members in **/admin/members**.
 
 ## 5. GitHub push
 
+The repository lives at <https://github.com/minkwon1252/PIFinder> with the `origin` remote set to
+the SSH URL `git@github.com:minkwon1252/PIFinder.git`. Day-to-day:
+
 ```bash
-git init                      # if not already a repo
 git add .
-git commit -m "Initial PIFinder scaffold"
+git commit -m "your message"
+git push                       # main already tracks origin/main
+```
+
+First-time setup on a fresh clone elsewhere (e.g. the club server) is just `git clone` (see §1).
+If you ever need to (re)wire the remote:
+
+```bash
+git remote add origin git@github.com:minkwon1252/PIFinder.git   # or: git remote set-url origin ...
 git branch -M main
-gh repo create PIFinder --private --source=. --remote=origin   # or create on github.com
-git remote add origin git@github.com:<you>/PIFinder.git        # if not using gh
 git push -u origin main
 ```
 
@@ -130,7 +138,7 @@ Target: `stem@100.124.141.21`, path `/home/stem/apps/PIFinder`. Docker-based.
 ssh stem@100.124.141.21
 mkdir -p /home/stem/apps/PIFinder
 cd /home/stem/apps/PIFinder
-git clone git@github.com:<you>/PIFinder.git .
+git clone git@github.com:minkwon1252/PIFinder.git .
 cp .env.example .env.production          # fill in PROD secrets; do NOT commit
 # set NEXT_PUBLIC_APP_URL to the public URL and add its /auth/callback in Supabase
 
