@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 /**
  * Seeds reference data (schools, departments, screening questions, sample
- * professors) via `psql`. Safe to re-run (uses ON CONFLICT).
+ * professors) from supabase/seed.sql, using the `pg` driver (no `psql` binary
+ * required). The seed is written to be safe to re-run (uses ON CONFLICT).
+ *
+ * Requires SUPABASE_DB_URL (see .env.example). For Supabase use the direct
+ * connection or session pooler URI (port 5432).
  *
  * Usage:
  *   node --env-file=.env.local scripts/db-seed.mjs
  */
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { execFileSync } from "node:child_process";
+import pg from "pg";
 
 const dbUrl = process.env.SUPABASE_DB_URL;
 if (!dbUrl) {
@@ -16,13 +21,22 @@ if (!dbUrl) {
 }
 
 const path = join(process.cwd(), "supabase", "seed.sql");
-console.log("→ seeding from supabase/seed.sql");
+
+const client = new pg.Client({
+  connectionString: dbUrl,
+  // Supabase requires SSL; the managed cert chain is trusted by Supabase but
+  // we relax verification to avoid local CA issues.
+  ssl: { rejectUnauthorized: false },
+});
+
 try {
-  execFileSync("psql", [dbUrl, "-v", "ON_ERROR_STOP=1", "-f", path], {
-    stdio: "inherit",
-  });
+  await client.connect();
+  console.log("→ seeding from supabase/seed.sql ...");
+  await client.query(readFileSync(path, "utf8"));
   console.log("✓ seed complete");
-} catch {
-  console.error("✗ seed failed");
-  process.exit(1);
+} catch (e) {
+  console.error(`\n✗ seed failed: ${e.message}`);
+  process.exitCode = 1;
+} finally {
+  await client.end();
 }
