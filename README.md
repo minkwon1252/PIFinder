@@ -2,41 +2,167 @@
 
 **Find your PI. Build your story. Manage your application.**
 
-A STEM-member-only graduate-school application copilot for SNU engineering students applying to
-US programs. STEM = *SNU Tomorrow's Edge Membership*, an honor society for SNU engineering
-students.
+PIFinder is a graduate-school application copilot for **SNU STEM members** applying to US programs.
+STEM = *SNU Tomorrow's Edge Membership*, an honor society for SNU engineering students. The app
+helps you find the right professors/PIs, understand why they fit, build an honest application
+story grounded in your real CV, train your English, and track deadlines.
 
-- **PI Finder** — finds optimal professors/PIs per student (department list + ultimate match).
-- **ENG Trainer** — TOEFL-style writing practice and English typing drills.
-- **Secretary** — application deadline tracking from official pages.
+- 🌐 **Live (beta):** <https://pi-finder-ten.vercel.app>
+- 🔒 **Members only:** you can sign in **only if** your email is `@snu.ac.kr` **and** an admin has
+  added you to the member allowlist. (This is by design — see [Who can use it](#who-can-use-it).)
 
-Stack: Next.js (App Router) · TypeScript · Tailwind CSS · Supabase (Auth, Postgres, Storage, RLS).
-
----
-
-## Table of contents
-1. [Local setup](#1-local-setup)
-2. [Supabase setup](#2-supabase-setup)
-3. [Environment variables](#3-environment-variables)
-4. [Database migration](#4-database-migration)
-5. [GitHub push](#5-github-push)
-6. [Server deployment](#6-server-deployment)
-7. [Updating the deployed app](#7-updating-the-deployed-app)
-8. [Security checklist](#8-security-checklist)
-9. [Backup checklist](#9-backup-checklist)
-10. [Architecture](#10-architecture)
+Stack: Next.js (App Router) · TypeScript · Tailwind CSS · Supabase (Auth · Postgres · Storage · RLS),
+hosted on **Vercel** with a managed **Supabase** backend.
 
 ---
 
-## 1. Local setup
+# Part A — User guide
 
-Requirements: Node 20+ (tested on Node 24), npm 11, and `psql` (for migrations).
+For STEM members using the app. No setup needed — just open the site.
+
+## Who can use it
+
+The membership gate requires **both**:
+1. Your email ends with `@snu.ac.kr`, **and**
+2. Your email is on the admin-maintained allowlist.
+
+If you get *"This email is not on the STEM member allowlist"*, ask an admin to add you. Being an
+SNU student alone is **not** enough — the allowlist is mandatory.
+
+## Signing in
+
+PIFinder uses **passwordless magic links** (no password to remember):
+
+1. Go to <https://pi-finder-ten.vercel.app/login>.
+2. Enter your `@snu.ac.kr` email and submit.
+3. Check your inbox for a sign-in link and click it (check spam the first time, then mark
+   "not spam"). You'll be brought into the app.
+4. First-time users land on **onboarding** to build a research profile.
+
+## What you can do
+
+### 1. Build your Research Profile (onboarding)
+Set your major(s), target degree (MS / PhD / MS-PhD), research-method preference, 2–3 interest
+keywords, preferred application area, an optional project summary, and your **target schools**
+(tagged Reach / Target / Foundation). You can also upload your **CV (PDF)** — it's stored in a
+**private** bucket only you and admins can access. This profile is reused by every PI Finder run
+and is editable anytime from **Profile**.
+
+### 2. Dashboard
+Your home base: jump into PI Finder, view saved professors, and track application requirements.
+
+### 3. PI Finder — the core feature
+Runs a multi-step pipeline that, for your targets, produces a **ranked list of professors** with
+an **explainable fit score** and **evidence for every claim**:
+
+1. Start a run from **PI Finder**.
+2. Answer a short **screening** questionnaire that sharpens the match to your interests.
+3. Review results: each candidate shows a fit score broken into components (not just a single
+   number), plus tier (Reach / Target / Foundation) and the sources behind every professor detail.
+4. Open a professor's **dossier** for the full picture: affiliations, bibliometric signals,
+   representative papers, and lab info — each tagged as **verified fact**, **inferred fit**,
+   **your info**, or **missing/uncertain** so you always know what's evidence vs. inference.
+
+> **Honesty guarantee:** PIFinder never invents professor details, metrics, or papers. Sample/seed
+> data is labeled `[SAMPLE]` and shown as low-confidence — never treat it as real.
+
+### 4. Shortlist
+Save professors you like, **eliminate** ones you don't, and **revive** eliminated ones later if you
+change your mind. Keeps your decision history so a run doesn't lose your judgments.
+
+### 5. Story Builder
+For a saved professor, get help shaping your **statement-of-purpose angle** — grounded **only** in
+your real CV and projects. It will not fabricate experience, publications, awards, or connections;
+it helps you frame what you actually have.
+
+### 6. ENG Trainer
+- **Writing:** TOEFL-style writing practice.
+- **Typing:** English typing drills that measure WPM and accuracy on academic text.
+
+### 7. Secretary — deadlines
+Track application requirements and deadlines for your target programs.
+
+### 8. Profile
+Edit your research profile and re-upload your CV anytime.
+
+### Admins
+Admins get an **/admin** area to manage the member allowlist, professors, schools, and deadlines.
+Admin actions are audited.
+
+## Giving beta feedback
+
+You're testing an early version — please report anything confusing, broken, or wrong (especially
+any professor info that looks fabricated or mislabeled). Tell us what you expected vs. what happened.
+
+---
+
+# Part B — Developer guide
+
+## How it's built & hosted
+
+| Layer | What we use |
+|---|---|
+| Frontend + server | **Next.js 15** (App Router, React 19, server components + server actions), TypeScript, Tailwind |
+| Hosting | **Vercel** (managed) — auto-deploys from the GitHub `main` branch. Production URL: `https://pi-finder-ten.vercel.app` |
+| Backend | **Supabase (managed cloud)** — Auth (email magic link), Postgres, Storage, Row Level Security |
+| Auth email | Custom **SMTP via Gmail** (Supabase → Auth → SMTP), to get past the built-in email rate limit |
+| LLM | Swappable provider (`mock` default; `anthropic` for real). Default model `claude-opus-4-8` |
+| Professor data | Source adapters: Mock (MVP), OpenAlex, Semantic Scholar, official-page (stub) |
+
+> **Note on the club server.** There is also a self-host path targeting `stem@100.124.141.21`
+> (`/home/stem/apps/PIFinder`) via Docker — but that host is a **Tailscale** address (`100.x`,
+> not publicly routable), so it's intended for private/internal access, not the public beta. The
+> public beta runs on Vercel. See [Deployment](#deployment) for both paths.
+
+## Architecture
+
+See [`CLAUDE.md`](./CLAUDE.md) for the full architecture, coding standards, security rules, and the
+professor-evidence policy. High level:
+
+```
+src/
+  app/                 Next.js App Router pages + server actions
+    login, onboarding, dashboard, profile
+    pi-finder/…        run → screening → results
+    professors/[id]    professor dossier (evidence-tagged)
+    shortlist, story-builder, secretary, eng-trainer/{writing,typing}
+    admin/…            members · professors · schools · deadlines
+    auth/callback      magic-link callback (re-checks the membership gate)
+  components/          AppShell, AppNav, EvidenceTag, TierBadge
+  lib/
+    supabase/          client (browser) · server (RLS) · admin (service role) · middleware
+    agents/            10 agent roles + PI Finder pipeline orchestrator
+    sources/           professor source adapters (mock, OpenAlex, Semantic Scholar, official)
+    scoring/           explainable fit-scoring model (stores components, not just totals)
+    llm/               swappable LLM provider
+    membership.ts      STEM membership gate (domain + allowlist)
+    department-expansion.ts, freshness.ts, audit.ts, rate-limit.ts, profile.ts, env.ts
+supabase/
+  migrations/          0001 schema · 0002 RLS · 0003 storage · 0004 grants
+  seed.sql             schools, departments, screening questions, sample professors
+scripts/
+  db-migrate.mjs       apply migrations (pg driver — no psql needed)
+  db-seed.mjs          apply seed.sql
+  allowlist-add.mjs    bulk-add members to the allowlist
+  deploy.sh            self-host (Docker) deploy helper
+tests/                 vitest unit tests (gate, scoring, expansion, freshness)
+```
+
+**The 10 agent roles** (`lib/agents/roles.ts`): Intake, School Mapper, Professor Scout,
+Bibliometric Analyst, Fit Ranker, Screening, Professor-level Reviewer, Story Coach, Secretary,
+ENG Trainer. The PI Finder run is orchestrated in `lib/agents/pipeline.ts`. Every professor claim
+must trace to a `professor_sources` record.
+
+## Local setup
+
+Requirements: **Node 20+** (tested on Node 24) and npm. No `psql` needed — migrations run through
+the bundled `pg` driver.
 
 ```bash
 git clone git@github.com:minkwon1252/PIFinder.git
 cd PIFinder
 npm install
-cp .env.example .env.local      # then fill in values (see §3)
+cp .env.example .env.local      # fill in values (see Environment variables)
 npm run dev                     # http://localhost:3000
 ```
 
@@ -46,146 +172,134 @@ Other commands:
 npm run build && npm run start  # production build + serve
 npm run lint                    # eslint
 npm run typecheck               # tsc --noEmit
-npm run test                    # vitest (unit tests)
+npm run test                    # vitest unit tests
 ```
 
-## 2. Supabase setup
+## Environment variables
 
-For the MVP we use **managed Supabase**.
-
-1. Create a project at <https://supabase.com>.
-2. **Project Settings → API**: copy the Project URL, the `anon` public key, and the
-   `service_role` key.
-3. **Project Settings → Database → Connection string (URI)**: copy it for migrations.
-4. **Authentication → Providers → Email**: enable Email (magic link). Set the Site URL to your
-   app URL and add `http://localhost:3000/auth/callback` (and your prod callback) to the
-   redirect allow-list.
-5. Run the migrations and seed (see §4). Migration `0003_storage.sql` creates the **private**
-   `cvs` bucket with owner-only RLS.
-
-> The `service_role` key bypasses RLS. It is used **server-side only** (membership gate, audit
-> logging, admin bootstrap) and must never reach the browser.
-
-## 3. Environment variables
-
-Copy `.env.example` → `.env.local`. Variables:
+Copy `.env.example` → `.env.local` (local) / set them in Vercel (production).
 
 | Variable | Scope | Purpose |
 |---|---|---|
 | `NEXT_PUBLIC_APP_NAME` | public | App display name |
-| `NEXT_PUBLIC_APP_URL` | public | Base URL (used for magic-link redirects) |
+| `NEXT_PUBLIC_APP_URL` | public | Base URL — drives magic-link redirects. Must match the deployed URL (`https://pi-finder-ten.vercel.app` in prod, `http://localhost:3000` locally) |
 | `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | Supabase anon key (RLS-protected) |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server-only secret** | Bypasses RLS; gate/audit/admin only |
-| `SUPABASE_DB_URL` | server-only secret | Postgres URI for migrations |
+| `SUPABASE_DB_URL` | server-only secret | Postgres URI — **only** for running migrations/seed/allowlist scripts. **Not** needed by the app at runtime (don't set it on Vercel). |
 | `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN` | public | Required email domain (`snu.ac.kr`) |
-| `BOOTSTRAP_ADMIN_EMAILS` | server-only | Comma-separated emails auto-promoted to admin |
-| `LLM_PROVIDER` / `LLM_MODEL` | server-only | Swappable LLM (`mock` \| `anthropic` \| `openai`) |
-| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | server-only secret | LLM keys |
-| `OPENALEX_MAILTO`, `SEMANTIC_SCHOLAR_API_KEY` | server-only | Source adapters (Phase 3) |
+| `BOOTSTRAP_ADMIN_EMAILS` | server-only | Comma-separated emails auto-promoted to admin on first login |
+| `LLM_PROVIDER` / `LLM_MODEL` | server-only | Swappable LLM (`mock` \| `anthropic`) |
+| `ANTHROPIC_API_KEY` | server-only secret | LLM key (only if `LLM_PROVIDER=anthropic`) |
+| `OPENALEX_MAILTO`, `SEMANTIC_SCHOLAR_API_KEY`, `CROSSREF_MAILTO` | server-only | Source adapters (Phase 3) |
 | `RATE_LIMIT_RUNS_PER_DAY` | server-only | Cap on expensive PI Finder runs/user/day |
 
-**Never commit `.env*` files** (only `.env.example` is tracked).
+**Never commit `.env*` files** (only `.env.example` is tracked). The `service_role` key bypasses RLS
+and is used **server-side only** (membership gate, audit logging, admin bootstrap) — never in the
+browser.
 
-## 4. Database migration
+## Supabase setup
 
-Migrations live in `supabase/migrations/` and run in order:
+1. Create a project at <https://supabase.com>.
+2. **Project Settings → API:** copy the Project URL, `anon` key, and `service_role` key.
+3. **Project Settings → Database → Connection string (URI):** copy it for migrations
+   (`SUPABASE_DB_URL`). Use the direct / session pooler URI (port 5432).
+4. **Authentication → URL Configuration:** set **Site URL** and add redirect URLs for both
+   `http://localhost:3000/**` (dev) and your prod URL `https://pi-finder-ten.vercel.app/**`.
+5. **Authentication → SMTP Settings:** configure custom SMTP (we use Gmail SMTP with an App
+   Password) so magic-link emails aren't throttled by Supabase's built-in sender. Then raise the
+   email rate limit under **Authentication → Rate Limits**.
+6. Run the migrations + seed (below). `0003_storage.sql` creates the **private** `cvs` bucket.
 
-- `0001_init.sql` — schema (all tables, enums, triggers, `is_admin()`/`is_member()`).
+## Database migrations
+
+Migrations live in `supabase/migrations/` and run in order via the `pg` driver (no `psql` required):
+
+- `0001_init.sql` — schema (tables, enums, triggers, `is_admin()` / `is_member()`).
 - `0002_rls.sql` — Row Level Security policies on every table.
 - `0003_storage.sql` — private `cvs` storage bucket + object policies.
+- `0004_grants.sql` — grants the PostgREST roles (anon/authenticated/service_role) DML on the
+  schema. **Required** because CLI migrations connect as the `postgres` role, whose Supabase
+  default privileges grant the API roles only TRUNCATE/REFERENCES/TRIGGER — not SELECT/INSERT/
+  UPDATE/DELETE. Without it, every API call returns "permission denied". RLS still gates rows.
 
 ```bash
-# Requires SUPABASE_DB_URL in the environment.
-node --env-file=.env.local scripts/db-migrate.mjs
-node --env-file=.env.local scripts/db-seed.mjs     # schools, departments, sample data
+node --env-file=.env.local scripts/db-migrate.mjs    # apply all migrations
+node --env-file=.env.local scripts/db-seed.mjs       # schools, departments, sample data
 ```
 
-Alternatively run each file with the Supabase SQL editor or `psql "$SUPABASE_DB_URL" -f <file>`.
+The scripts read `SUPABASE_DB_URL`. `npm run db:migrate` / `npm run db:seed` do the same (they load
+`.env.local` automatically).
 
-After migrating, sign in once with a `BOOTSTRAP_ADMIN_EMAILS` address to become admin, then add
-members in **/admin/members**.
+## Members & admin
 
-## 5. GitHub push
+- **Bootstrap admin:** sign in once with a `BOOTSTRAP_ADMIN_EMAILS` address; you're promoted to
+  admin and implicitly allowlisted on first login.
+- **Add beta testers** to the allowlist (they each need an `@snu.ac.kr` email too):
 
-The repository lives at <https://github.com/minkwon1252/PIFinder> with the `origin` remote set to
-the SSH URL `git@github.com:minkwon1252/PIFinder.git`. Day-to-day:
+  ```bash
+  # inline:
+  node --env-file=.env.local scripts/allowlist-add.mjs alice@snu.ac.kr bob@snu.ac.kr
+  # or from a file (one email per line):
+  node --env-file=.env.local scripts/allowlist-add.mjs --file members.txt
+  ```
+
+  Admins can also manage the allowlist from **/admin/members**.
+
+## Deployment
+
+### Primary: Vercel (current public beta)
+
+1. Push to GitHub (`git push origin main`).
+2. Import the repo at <https://vercel.com> → it auto-detects Next.js.
+3. Set the environment variables above in Vercel (Production). **Skip `SUPABASE_DB_URL`** — the app
+   doesn't use it; migrations are run locally.
+4. Deploy. Set `NEXT_PUBLIC_APP_URL` to the resulting stable URL
+   (`https://pi-finder-ten.vercel.app`) and redeploy (it's inlined at build time).
+5. Update Supabase Site URL + redirect URLs to that URL (see Supabase setup).
+6. Migrations are **not** run by Vercel — apply them locally against the shared Supabase project
+   whenever `supabase/migrations/` changes.
+
+**Custom domain (later):** to use e.g. `stem-pifinder.com`, register it (easiest via Vercel →
+Settings → Domains, which auto-configures DNS + HTTPS), then point `NEXT_PUBLIC_APP_URL` and the
+Supabase Site URL at it.
+
+### Alternative: self-host on the club server (Docker)
+
+For internal/Tailscale access on `stem@100.124.141.21`:
 
 ```bash
-git add .
-git commit -m "your message"
-git push                       # main already tracks origin/main
-```
-
-First-time setup on a fresh clone elsewhere (e.g. the club server) is just `git clone` (see §1).
-If you ever need to (re)wire the remote:
-
-```bash
-git remote add origin git@github.com:minkwon1252/PIFinder.git   # or: git remote set-url origin ...
-git branch -M main
-git push -u origin main
-```
-
-`.gitignore` excludes `.env*`, keys, and `backups/`. Verify no secrets are staged:
-`git status` and `git grep -i "service_role"` should show nothing sensitive.
-
-## 6. Server deployment
-
-Target: `stem@100.124.141.21`, path `/home/stem/apps/PIFinder`. Docker-based.
-
-```bash
-# On the club server (one-time):
 ssh stem@100.124.141.21
-mkdir -p /home/stem/apps/PIFinder
-cd /home/stem/apps/PIFinder
+mkdir -p /home/stem/apps/PIFinder && cd /home/stem/apps/PIFinder
 git clone git@github.com:minkwon1252/PIFinder.git .
 cp .env.example .env.production          # fill in PROD secrets; do NOT commit
-# set NEXT_PUBLIC_APP_URL to the public URL and add its /auth/callback in Supabase
-
-# Build + run (binds to 127.0.0.1:3000; front with nginx/caddy for TLS):
+# Build + run (binds to 127.0.0.1:3000; front with nginx/caddy for TLS, or expose via a tunnel):
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-
-# Apply DB migrations from the server (or any machine with psql + SUPABASE_DB_URL):
-node --env-file=.env.production scripts/db-migrate.mjs
-node --env-file=.env.production scripts/db-seed.mjs
-```
-
-A helper script is provided: `scripts/deploy.sh` (run on the server).
-
-## 7. Updating the deployed app
-
-```bash
-ssh stem@100.124.141.21
-cd /home/stem/apps/PIFinder
-git pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-# if migrations changed:
 node --env-file=.env.production scripts/db-migrate.mjs
 ```
 
-## 8. Security checklist
+Updating: `git pull` then re-run the `docker compose … up -d --build`. Helper: `scripts/deploy.sh`.
 
-Before letting real students use the app (and **before uploading real CVs**):
+## Security checklist
 
-- [ ] `.env*` never committed; `git grep service_role` is clean.
+Before real students use the app (and **before real CVs are uploaded**):
+
+- [ ] `.env*` never committed; `git grep service_role` shows nothing sensitive.
 - [ ] Service-role key used only in `src/lib/supabase/admin.ts` (guarded by `server-only`).
-- [ ] RLS enabled on **every** table (`0002_rls.sql` applied); verify with the SQL in
-      [§ RLS verification](#rls-verification).
+- [ ] RLS enabled on **every** table (`0002_rls.sql`); verify with the SQL below.
+- [ ] API-role grants applied (`0004_grants.sql`) — RLS, not missing grants, is what gates access.
 - [ ] Owner-only tables enforce `user_id = auth.uid()`.
-- [ ] CV bucket `cvs` is **private**; object policies restrict to the owning user folder.
+- [ ] CV bucket `cvs` is **private**; object policies restrict to the owning user's folder.
 - [ ] Membership gate enforced at login **and** in the auth callback (defense in depth).
 - [ ] Only allowlisted `@snu.ac.kr` emails can enter (no auto-admit of all SNU users).
 - [ ] Admin actions write to `audit_logs`.
 - [ ] Expensive runs are rate-limited (`RATE_LIMIT_RUNS_PER_DAY`).
-- [ ] Prod app bound to localhost behind TLS (nginx/caddy); HSTS enabled.
 - [ ] Supabase Auth redirect allow-list contains only your real callback URLs.
-- [ ] Backups configured and a restore has been test-run (see §9).
+- [ ] Backups configured and a restore has been test-run.
 
-<a id="rls-verification"></a>
-**RLS verification** — run in the Supabase SQL editor:
+**RLS verification** — run in the Supabase SQL editor (expect zero rows):
 
 ```sql
--- Every public table must have RLS enabled (expect zero rows):
 select relname from pg_class c
 join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity = false;
@@ -194,39 +308,17 @@ where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity = false;
 Also sign in as a non-admin test user and confirm you cannot read another user's
 `uploaded_documents`, `applications`, or `search_runs`.
 
-## 9. Backup checklist
+## Backups
 
 - [ ] Enable Supabase automated daily backups (Project → Database → Backups), or schedule
       `pg_dump "$SUPABASE_DB_URL" > backups/pifinder-$(date +%F).sql`.
-- [ ] Back up the `cvs` storage bucket separately (Supabase Storage export / `supabase storage`).
-- [ ] Store backups off-server, encrypted; keep `backups/` out of git (already gitignored).
-- [ ] **Test a restore** into a scratch project at least once before trusting it.
-- [ ] Document retention (e.g. 30 daily, 12 monthly).
+- [ ] Back up the `cvs` storage bucket separately.
+- [ ] Store backups off-server, encrypted; keep `backups/` out of git (gitignored).
+- [ ] **Test a restore** into a scratch project at least once.
 
-## 10. Architecture
+## Build phases
 
-See [`CLAUDE.md`](./CLAUDE.md) for the full architecture summary, coding standards, security
-rules, and the professor-evidence policy. High level:
-
-```
-src/
-  app/                Next.js App Router pages + server actions
-  components/          Shared server/client components (nav, badges, shell)
-  lib/
-    supabase/         client (browser) · server (RLS) · admin (service role) · middleware
-    agents/           agent roles + PI Finder pipeline orchestrator
-    sources/          professor source adapters (mock, OpenAlex, Semantic Scholar, official)
-    scoring/          explainable fit-scoring model
-    llm/              swappable LLM provider
-    membership.ts     STEM membership gate
-    department-expansion.ts, freshness.ts, audit.ts, rate-limit.ts, profile.ts
-supabase/
-  migrations/         0001 schema · 0002 RLS · 0003 storage
-  seed.sql            schools, departments, screening questions, sample professors
-tests/                vitest unit tests (gate, scoring, expansion, freshness)
-```
-
-**Build phases** (status in `CLAUDE.md`): Phase 1 (auth/onboarding/schema/deploy) and Phase 2
-(mock PI Finder pipeline, dossier, shortlist/revive, story builder) are implemented; Phase 3
-(real source adapters) has interface-complete stubs + OpenAlex/Semantic Scholar adapters; Phase 4
-(Secretary, ENG Trainer) is implemented in MVP form.
+Status tracked in `CLAUDE.md`. Phase 1 (auth/onboarding/schema/deploy) and Phase 2 (mock PI Finder
+pipeline, dossier, shortlist/revive, story builder) are implemented; Phase 3 (real source adapters)
+has OpenAlex + Semantic Scholar adapters and an interface-complete official-page stub; Phase 4
+(Secretary, ENG Trainer) is implemented in MVP form; Phase 5 (testing/security) is partial.
