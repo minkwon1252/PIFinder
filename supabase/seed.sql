@@ -83,8 +83,10 @@ insert into public.toefl_practice_sets (title, prompt, kind, time_limit_seconds)
 on conflict do nothing;
 
 -- =============================================================================
--- Sample professor data for the Phase 2 MOCK PI Finder pipeline.
--- Clearly synthetic. Replace with real source-adapter data in Phase 3.
+-- Department faculty-roster URLs (consumed by the official-page adapter, Phase 3).
+-- Real professor data is NOT seeded here — it is populated from a real source via
+-- scripts/seed-professors-openalex.mjs (provenance-backed). The previous synthetic
+-- [SAMPLE] professors were removed once real data landed.
 -- =============================================================================
 do $$
 declare
@@ -92,59 +94,16 @@ declare
   berk_id uuid;
   mse_id uuid;
   ee_id uuid;
-  p1 uuid; p2 uuid; p3 uuid;
-  src uuid;
 begin
   select id into mit_id from public.schools where short_name = 'MIT';
   select id into berk_id from public.schools where short_name = 'UC Berkeley';
   select id into mse_id from public.departments where abbrev = 'MSE';
   select id into ee_id from public.departments where abbrev = 'EE';
 
-  -- school_departments links
   insert into public.school_departments (school_id, department_id, faculty_url)
   values
     (mit_id, mse_id, 'https://dmse.mit.edu/people/'),
     (mit_id, ee_id, 'https://www.eecs.mit.edu/people/'),
     (berk_id, mse_id, 'https://mse.berkeley.edu/people/')
   on conflict do nothing;
-
-  -- Professor 1 (synthetic)
-  insert into public.professors (full_name, research_identity, lab_name, research_themes)
-  values ('[SAMPLE] Prof. A. Carter', 'Designs solid-state battery materials using in-situ characterization.',
-          'Energy Materials Lab', array['batteries','solid electrolytes','in-situ TEM'])
-  returning id into p1;
-
-  insert into public.professor_affiliations (professor_id, school_id, department_id, title)
-  values (p1, mit_id, mse_id, 'Professor');
-
-  insert into public.professor_sources (professor_id, source_type, source_url, confidence, raw_excerpt)
-  values (p1, 'department_page', 'https://dmse.mit.edu/people/', 0.40, 'SAMPLE seed record — not real.')
-  returning id into src;
-
-  insert into public.professor_metrics (professor_id, citation_count, h_index, works_count, source_id)
-  values (p1, 18000, 62, 210, src);
-
-  -- Professor 2 (synthetic)
-  insert into public.professors (full_name, research_identity, lab_name, research_themes)
-  values ('[SAMPLE] Prof. B. Nakamura', 'Computational discovery of semiconductor interfaces for devices.',
-          'Materials Theory Group', array['semiconductors','DFT','interfaces'])
-  returning id into p2;
-
-  insert into public.professor_affiliations (professor_id, school_id, department_id, title)
-  values (p2, mit_id, ee_id, 'Associate Professor');
-
-  insert into public.professor_sources (professor_id, source_type, source_url, confidence)
-  values (p2, 'lab_page', 'https://example.edu/lab', 0.35);
-
-  -- Professor 3 (synthetic, Berkeley)
-  insert into public.professors (full_name, research_identity, lab_name, research_themes)
-  values ('[SAMPLE] Prof. C. Okafor', 'Experimental nanofabrication for energy storage devices.',
-          'Nanoscale Energy Lab', array['nanofabrication','batteries','electrodes'])
-  returning id into p3;
-
-  insert into public.professor_affiliations (professor_id, school_id, department_id, title)
-  values (p3, berk_id, mse_id, 'Assistant Professor');
-
-  insert into public.professor_sources (professor_id, source_type, source_url, confidence)
-  values (p3, 'department_page', 'https://mse.berkeley.edu/people/', 0.30);
 end $$;
