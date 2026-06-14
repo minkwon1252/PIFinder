@@ -142,7 +142,8 @@ supabase/
   seed.sql             schools, departments, screening questions, sample professors
 scripts/
   db-migrate.mjs       apply migrations (pg driver — no psql needed)
-  db-seed.mjs          apply seed.sql
+  db-seed.mjs          apply seed.sql (reference data + [SAMPLE] professors)
+  seed-professors-openalex.mjs  seed REAL professors from OpenAlex (provenance-backed)
   allowlist-add.mjs    bulk-add members to the allowlist
   deploy.sh            self-host (Docker) deploy helper
 tests/                 vitest unit tests (gate, scoring, expansion, freshness)
@@ -245,6 +246,27 @@ The scripts read `SUPABASE_DB_URL`. `npm run db:migrate` / `npm run db:seed` do 
   ```
 
   Admins can also manage the allowlist from **/admin/members**.
+
+## Real professor data (OpenAlex)
+
+`scripts/seed-professors-openalex.mjs` populates the `professors` / `professor_affiliations` /
+`professor_metrics` / `professor_sources` tables with **real, source-backed** faculty for the
+7 seeded top schools (MIT, Stanford, UC Berkeley, Northwestern, Caltech, Princeton, Harvard) across
+all 14 departments. It queries OpenAlex (no API key) for the most active recent (2020+) authors per
+institution × department topic-field, keeps only those whose *current* institution still matches
+(drops people who moved), and stores real metrics + an `openalex` source record per professor.
+Homepage/lab URLs are left null on purpose — OpenAlex doesn't provide them and we don't invent them
+(the official-page adapter milestone fills those). Re-runnable/idempotent.
+
+```bash
+node --env-file=.env.local scripts/seed-professors-openalex.mjs
+# scope a single school / fewer per dept while testing:
+ONLY_SCHOOL=MIT N_PER=4 node --env-file=.env.local scripts/seed-professors-openalex.mjs
+```
+
+> Department attribution is inferred from OpenAlex topic fields (approximate), not official faculty
+> rosters — that authoritative mapping is the official-page **Phase 3 milestone**. Until then,
+> treat the department tag as a strong hint, not ground truth.
 
 ## Deployment
 
