@@ -3,7 +3,7 @@
 **Find your PI. Build your story. Manage your application.**
 
 A STEM-member-only graduate-school application copilot for SNU engineering students applying to
-US programs. STEM = *SNU Tomorrow's Engineering Membership*, an honor society for SNU engineering
+US programs. STEM = *SNU Tomorrow's Edge Membership*, an honor society for SNU engineering
 students.
 
 - **PI Finder** — finds optimal professors/PIs per student (department list + ultimate match).

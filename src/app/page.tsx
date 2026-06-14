@@ -4,7 +4,7 @@ export default function LandingPage() {
   return (
     <main className="mx-auto max-w-4xl px-6 py-20">
       <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-brand-accent">
-        STEM · SNU Tomorrow&apos;s Engineering Membership
+        STEM · SNU Tomorrow&apos;s Edge Membership
       </p>
       <h1 className="text-5xl font-bold text-brand">PIFinder</h1>
       <p className="mt-4 text-xl text-slate-600">
