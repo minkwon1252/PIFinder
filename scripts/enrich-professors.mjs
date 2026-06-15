@@ -81,6 +81,12 @@ async function matchAuthor(name, instId) {
   const best = cands[0];
   if ((best.works_count ?? 0) < 3) return null; // too sparse → not confident it's the professor
 
+  // Ambiguity guard (common names): if a DIFFERENT same-name author at this
+  // institution is comparably productive, we can't tell them apart → skip rather
+  // than risk attaching the wrong person's metrics.
+  const second = cands.find((x) => shortId(x.id) !== shortId(best.id));
+  if (second && (second.works_count ?? 0) > 0.5 * (best.works_count ?? 0)) return null;
+
   const confidence = norm(best.display_name) === target ? 0.85 : 0.7;
   return { author: best, confidence };
 }
@@ -98,22 +104,22 @@ async function main() {
     where p.openalex_id is null
     order by p.id, a.is_primary desc`);
 
+  const work = LIMIT === Infinity ? rows : rows.slice(0, LIMIT);
   let matched = 0, skipped = 0, processed = 0;
-  for (const p of rows) {
-    if (processed >= LIMIT) break;
+
+  async function enrichOne(p) {
     processed++;
     const instId = INST[p.school];
-    if (!instId) { skipped++; continue; }
+    if (!instId) { skipped++; return; }
 
-    const hit = await matchAuthor(p.full_name, instId);
-    await sleep(120); // polite pool
-    if (!hit) { skipped++; continue; }
+    const hit = await matchAuthor(p.full_name, instId); // the slow API call (parallelized)
+    if (!hit) { skipped++; return; }
     const a = hit.author;
     const oaId = shortId(a.id);
 
     // Guard: don't collide with an openalex_id already used by another professor.
     const taken = await client.query("select 1 from public.professors where openalex_id = $1 and id <> $2", [oaId, p.id]);
-    if (taken.rows[0]) { skipped++; continue; }
+    if (taken.rows[0]) { skipped++; return; }
 
     const themes = (p.research_themes && p.research_themes.length)
       ? p.research_themes
@@ -127,7 +133,6 @@ async function main() {
        where id = $5`,
       [oaId, a.orcid ?? null, themes, identity, p.id]);
 
-    // openalex source + metrics (refresh any prior openalex rows for this prof).
     await client.query("delete from public.professor_sources where professor_id=$1 and source_type='openalex'", [p.id]);
     const src = await client.query(
       `insert into public.professor_sources (professor_id, source_type, source_url, confidence, raw_excerpt)
@@ -142,6 +147,16 @@ async function main() {
     matched++;
     if (matched % 50 === 0) process.stdout.write(`  …${matched} matched / ${processed} processed\n`);
   }
+
+  // Bounded concurrency — parallelize the slow OpenAlex lookups (polite pool).
+  const CONCURRENCY = Number(process.env.CONCURRENCY ?? 6);
+  let cursor = 0;
+  await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
+    while (cursor < work.length) {
+      const p = work[cursor++];
+      try { await enrichOne(p); } catch { skipped++; }
+    }
+  }));
 
   console.log(`\n✓ done. processed ${processed}, matched ${matched}, skipped (no confident match) ${skipped}`);
   const left = await client.query("select count(*)::int n from public.professors where openalex_id is null");
