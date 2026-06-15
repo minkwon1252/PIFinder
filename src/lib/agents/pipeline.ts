@@ -84,13 +84,24 @@ export async function runPiFinder(params: {
         .eq("professor_id", prof.id)
         .maybeSingle();
 
+      // Most recent publication year from ingested papers → publication_recency.
+      const { data: paperRows } = await admin
+        .from("professor_papers")
+        .select("papers(year)")
+        .eq("professor_id", prof.id);
+      const latestPublicationYear = (paperRows ?? []).reduce<number | null>((max, r) => {
+        const rel = (r as { papers: { year: number | null } | { year: number | null }[] | null }).papers;
+        const y = Array.isArray(rel) ? (rel[0]?.year ?? null) : (rel?.year ?? null);
+        return y != null && (max == null || y > max) ? y : max;
+      }, null);
+
       const score = scoreFit({
         studentKeywords: profile.interests,
         professorThemes: prof.research_themes ?? [],
         studentMethod: profile.methodPreference,
         professorMethod: null,
         applicationArea: profile.applicationArea,
-        latestPublicationYear: null,
+        latestPublicationYear,
         projectKeywords: profile.projectKeywords,
         deptSchoolMatch: true,
         labActivity: metrics?.works_count ? Math.min(1, metrics.works_count / 200) : 0.5,

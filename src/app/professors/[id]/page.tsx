@@ -24,7 +24,7 @@ export default async function ProfessorDossierPage({
     );
   }
 
-  const [{ data: affils }, { data: sources }, { data: metrics }, { data: labMembers }] =
+  const [{ data: affils }, { data: sources }, { data: metrics }, { data: labMembers }, { data: paperLinks }] =
     await Promise.all([
       supabase
         .from("professor_affiliations")
@@ -42,7 +42,17 @@ export default async function ProfessorDossierPage({
         .order("as_of", { ascending: false })
         .maybeSingle(),
       supabase.from("lab_members").select("name, role, research_note").eq("professor_id", id),
+      supabase
+        .from("professor_papers")
+        .select("is_influential, papers(title, year, venue, citation_count, url)")
+        .eq("professor_id", id),
     ]);
+
+  // Recent papers, newest first.
+  const papers = (paperLinks ?? [])
+    .map((pl: any) => ({ ...pl.papers, is_influential: pl.is_influential }))
+    .filter((p) => p?.title)
+    .sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
 
   const avgConfidence =
     (sources ?? []).reduce((s, r) => s + Number(r.confidence), 0) /
@@ -91,6 +101,42 @@ export default async function ProfessorDossierPage({
                 </span>
               ))}
             </div>
+          </section>
+
+          <section className="card">
+            <h2 className="font-semibold">Recent papers</h2>
+            {papers.length ? (
+              <ul className="mt-2 space-y-2 text-sm">
+                {papers.slice(0, 8).map((p, i) => (
+                  <li key={i} className="border-b border-slate-100 pb-2 last:border-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-medium text-slate-800">
+                        {p.url ? (
+                          <a href={p.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                            {p.title}
+                          </a>
+                        ) : (
+                          p.title
+                        )}
+                      </span>
+                      {p.is_influential && (
+                        <span className="shrink-0 rounded-full bg-brand-accent/10 px-2 py-0.5 text-[10px] text-brand-accent">
+                          most cited
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {[p.year, p.venue].filter(Boolean).join(" · ")}
+                      {p.citation_count != null && ` · ${p.citation_count} citations`}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-slate-400">
+                <EvidenceTag kind="missing_uncertain" /> No papers retrieved yet.
+              </p>
+            )}
           </section>
 
           <section className="card">
