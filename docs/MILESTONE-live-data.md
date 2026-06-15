@@ -138,6 +138,23 @@ tests cover parsing + resolution + merge.
 
 ## Progress log
 
+### 3b — enrich roster-only faculty (2026-06-15)
+- **`scripts/enrich-professors.mjs`** — matches professors that have a verified official-page
+  affiliation but no OpenAlex record to an OpenAlex author, by **name + institution**, and attaches
+  real metrics (h-index, citations, works), ORCID, topics, and an `openalex` source carrying the
+  match confidence. Idempotent (only `openalex_id IS NULL`).
+- **Conservative matching (no misattribution):** query authors filtered to the professor's
+  institution + name; among same-name candidates pick the **most productive** (rescues e.g. the real
+  "Robert S. Langer" h-264 / "Andrew W. Lo" over sparse homonyms); require works ≥ 3 (drops trivial
+  wrong matches); exact full-name → confidence 0.85, first+last → 0.70; no confident match → metrics
+  stay **missing**, never zero-filled. Strips trailing credentials (", MD, FACS") before matching.
+- `getJson` has a 15s timeout (a stalled connection previously hung the whole run).
+- Verified quality on a sample (Langer, Juejun Hu, Zeldovich, Solomon, …) — all correct; zero
+  enriched rows with works < 3.
+- TODO (3b cont.): pull recent/influential **papers** into `papers`/`professor_papers` (drives
+  `publication_recency` in scoring, which still uses a default until papers land); optionally a
+  Semantic Scholar / ORCID second pass for faculty OpenAlex misses.
+
 ### 3a — official-page adapter (2026-06-14)
 - **Adapter implemented** (`src/lib/sources/official-page.ts`) — no longer a stub. Robots-aware
   descriptive UA, 25s timeout, week-long cache (Next runtime), graceful `[]` on
