@@ -22,19 +22,20 @@ const MAILTO = process.env.OPENALEX_MAILTO || "minkwon@snu.ac.kr";
 const BASE = "https://api.openalex.org";
 const PER = Number(process.env.PER ?? 8);          // papers kept per professor
 const LIMIT = process.env.LIMIT ? Number(process.env.LIMIT) : Infinity;
-const CONCURRENCY = Number(process.env.CONCURRENCY ?? 6);
+// OpenAlex polite pool ~10 req/s; keep concurrency low to avoid 429s.
+const CONCURRENCY = Number(process.env.CONCURRENCY ?? 3);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const shortId = (u) => (u ? String(u).split("/").pop() : null);
 
 async function getJson(url) {
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     try {
-      const res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
-      if (res.status === 429) { await sleep(2000); continue; }
+      const res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
+      if (res.status === 429) { await sleep(1000 * 2 ** i); continue; } // exp backoff on rate limit
       if (!res.ok) return null;
       return await res.json();
-    } catch { await sleep(500); }
+    } catch { await sleep(500 * (i + 1)); }
   }
   return null;
 }
@@ -55,8 +56,8 @@ function toPaper(w) {
 }
 
 async function main() {
-  const client = new pg.Client({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
-  await client.connect();
+  // Pool (not a single Client) so concurrent workers don't share one connection.
+  const client = new pg.Pool({ connectionString: dbUrl, ssl: { rejectUnauthorized: false }, max: CONCURRENCY + 1 });
 
   const { rows } = await client.query(`
     select p.id, p.openalex_id
@@ -71,6 +72,7 @@ async function main() {
     done++;
     const url = `${BASE}/works?filter=authorships.author.id:${prof.openalex_id}&sort=publication_year:desc&per_page=${PER}&mailto=${MAILTO}`;
     const json = await getJson(url);
+    await sleep(200); // throttle to stay under the polite-pool rate limit
     const works = (json?.results ?? []).filter((w) => w.title || w.display_name);
     if (works.length === 0) return;
 
