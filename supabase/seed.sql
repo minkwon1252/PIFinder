@@ -53,7 +53,8 @@ insert into public.departments (name, abbrev, field) values
   ('Mathematics', 'MATH', 'science'),
   ('Aerospace Engineering', 'AeroE', 'engineering'),
   ('Civil and Environmental Engineering', 'CEE', 'engineering'),
-  ('Industrial and Systems Engineering', 'ISE', 'engineering')
+  ('Industrial and Systems Engineering', 'ISE', 'engineering'),
+  ('Biology', 'BIO', 'science')
 on conflict (name) do nothing;
 
 -- ---- Screening questions (Akinator-style discriminators) ----

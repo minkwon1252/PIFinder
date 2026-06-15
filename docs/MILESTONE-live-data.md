@@ -159,12 +159,22 @@ tests cover parsing + resolution + merge.
 - **Fan-out done (2026-06-14):** **325 verified MIT + 254 verified Stanford faculty.**
   - MIT parsers: `mit-eecs` (EECS→CS/EE), `mit-teaser` (DMSE), `mit-cheme` (ChemE), `mit-cee` (CEE).
   - Stanford JSON:API depts: MSE, ChemE, AeroAstro, BioE, ME, CEE, MS&E→ISE.
+- **Sciences + more departments (2026-06-15):**
+  - Added a **Biology (BIO)** department; OpenAlex seed now maps it (field 13) → real biology faculty
+    across all 7 schools. Stanford Biology roster also ingested via official page (hb-card).
+  - Stanford **EE** (`orglist` HTML — only ~10 in static HTML, rest JS-rendered; OpenAlex covers the
+    rest), Stanford **Physics** + **Biology** (`hb-card` HTML) now ingested.
+  - **Berkeley**: covered via OpenAlex (65 profs). Berkeley dept sites are bespoke with no JSON:API,
+    so official-page rosters are a later per-site task.
+- **Coverage now:** 1044 professors total (669 with homepage). By verified-via-official-page:
+  MSE/CS/ChemE/EE/CEE/BME/PHYS/BIO/ME/AeroE/ISE are strong; **CHEM, MATH, NucE, AP** still rely on
+  OpenAlex only.
 - **Still TODO in 3a:**
-  - MIT MechE (`meche` — JS-rendered) and AeroAstro (different markup) need their own parsers/approach.
-  - Stanford EE (`ee.stanford.edu`) and CS use a different platform (404/301) — own parser needed.
-  - MIT departments with no standalone site in our list (BME/NucE/AP/PHYS/CHEM/MATH/ISE) — decide
-    sources (e.g. physics.mit.edu, nse.mit.edu) per dept.
-  - Minor cleanup: strip credential suffixes (", MD, FACS") from some Stanford names.
+  - MIT MechE (`meche` — JS-rendered), AeroAstro, and MIT science depts (physics/chem/math/bio at
+    their own URLs) — bespoke parsers.
+  - Stanford **Chemistry** + **Mathematics** (different H&S theme, not `hb-card`) and **CS** (JS/404).
+  - Berkeley official rosters (bespoke per-site).
+  - Minor: strip credential suffixes (", MD, FACS") from some Stanford names.
 
 ## Out of scope (later)
 - Schools beyond the 7 seeded; non-US programs.

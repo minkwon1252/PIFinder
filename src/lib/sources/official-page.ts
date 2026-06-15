@@ -5,10 +5,15 @@ import type {
 } from "./types";
 // Shared, Node+Next-portable parsers (also used by scripts/ingest-official.mjs).
 import { MIT_PARSERS } from "./parsers/mit.mjs";
-import { parseStanfordPersons } from "./parsers/stanford.mjs";
+import { parseStanfordPersons, parseStanfordEe, parseStanfordHbCard } from "./parsers/stanford.mjs";
 
 /** Combined parser registry. Each parser takes (responseText, url) → faculty. */
-const PARSERS = { ...MIT_PARSERS, stanford: parseStanfordPersons };
+const PARSERS = {
+  ...MIT_PARSERS,
+  stanford: parseStanfordPersons,
+  "stanford-ee": parseStanfordEe,
+  "stanford-hbcard": parseStanfordHbCard,
+};
 
 /**
  * Official department/lab page adapter (Phase 3a).

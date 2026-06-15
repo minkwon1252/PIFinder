@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { parseMitEecsFaculty } from "@/lib/sources/parsers/mit.mjs";
-import { parseStanfordPersonsObj } from "@/lib/sources/parsers/stanford.mjs";
+import {
+  parseStanfordPersonsObj,
+  parseStanfordEe,
+  parseStanfordHbCard,
+} from "@/lib/sources/parsers/stanford.mjs";
 
 // Fixture mirrors the real MIT EECS people-page markup (verified 2026-06).
 const FIXTURE = `
@@ -82,5 +86,33 @@ describe("Stanford JSON:API person parser", () => {
 
   it("derives a research identity from interests with HTML stripped", () => {
     expect(rows[0]?.researchIdentity).toBe("Batteries and solid electrolytes.");
+  });
+});
+
+describe("Stanford EE orglist parser", () => {
+  const html = `<h3 class="orglist__display-name"><a href="https://profiles.stanford.edu/sara-achour">Sara Achour</a>
+    <small class="orglist__person-title d-block"> Assistant Professor </small></h3>`;
+  it("extracts name, title, and the Profiles homepage", () => {
+    const rows = parseStanfordEe(html);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      fullName: "Sara Achour",
+      title: "Assistant Professor",
+      homepageUrl: "https://profiles.stanford.edu/sara-achour",
+    });
+  });
+});
+
+describe("Stanford hb-card parser", () => {
+  const html = `<div class="hb-card__title"><h2><div class="views-field views-field-title"><span class="field-content">
+    <a href="/people/tom-abel" hreflang="en">Tom Abel</a></span></div></h2></div>
+    <div class="hb-card__subcontent"><span class="field-content hb-subtitle">Professor of Physics</span></div>`;
+  const rows = parseStanfordHbCard(html, "https://physics.stanford.edu/people/faculty");
+  it("extracts name + title and absolutizes the relative profile link", () => {
+    expect(rows[0]).toMatchObject({
+      fullName: "Tom Abel",
+      title: "Professor of Physics",
+      homepageUrl: "https://physics.stanford.edu/people/tom-abel",
+    });
   });
 });

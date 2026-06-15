@@ -59,6 +59,7 @@ const DEPTS = {
   CEE:   { kind: "subfield", id: 2205 }, // Civil and Structural Engineering
   ISE:   { kind: "subfield", id: 2209 }, // Industrial and Manufacturing Engineering
   NucE:  { kind: "subfield", id: 2104 }, // Nuclear Energy and Engineering
+  BIO:   { kind: "field",    id: 13 },   // Biochemistry, Genetics and Molecular Biology
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

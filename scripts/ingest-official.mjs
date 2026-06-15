@@ -16,7 +16,10 @@
  */
 import pg from "pg";
 import { MIT_PARSERS } from "../src/lib/sources/parsers/mit.mjs";
-import { parseStanfordPersonsObj } from "../src/lib/sources/parsers/stanford.mjs";
+import { parseStanfordPersonsObj, parseStanfordEe, parseStanfordHbCard } from "../src/lib/sources/parsers/stanford.mjs";
+
+// HTML parsers usable by `kind: "html"` sources.
+const HTML_PARSERS = { ...MIT_PARSERS, "stanford-ee": parseStanfordEe, "stanford-hbcard": parseStanfordHbCard };
 
 const dbUrl = process.env.SUPABASE_DB_URL;
 if (!dbUrl) { console.error("ERROR: SUPABASE_DB_URL is not set."); process.exit(1); }
@@ -49,6 +52,10 @@ const SOURCES = [
   { schoolShort: "Stanford", kind: "json", url: SP("me"), dept: "ME" },
   { schoolShort: "Stanford", kind: "json", url: SP("cee"), dept: "CEE" },
   { schoolShort: "Stanford", kind: "json", url: SP("msande"), dept: "ISE" },
+  // Stanford EE (orglist HTML) + H&S sciences (hb-card HTML).
+  { schoolShort: "Stanford", kind: "html", url: "https://ee.stanford.edu/people/faculty", parser: "stanford-ee", dept: "EE" },
+  { schoolShort: "Stanford", kind: "html", url: "https://physics.stanford.edu/people/faculty", parser: "stanford-hbcard", dept: "PHYS" },
+  { schoolShort: "Stanford", kind: "html", url: "https://biology.stanford.edu/people/faculty", parser: "stanford-hbcard", dept: "BIO" },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -102,7 +109,7 @@ async function main() {
     try {
       faculty = src.kind === "json"
         ? await fetchStanford(src.url)
-        : MIT_PARSERS[src.parser](await fetchHtml(src.url), src.url);
+        : HTML_PARSERS[src.parser](await fetchHtml(src.url), src.url);
     } catch (e) { console.warn(`  ✗ fetch/parse failed: ${e.message}`); continue; }
     console.log(`  parsed ${faculty.length} faculty`);
     totFaculty += faculty.length;

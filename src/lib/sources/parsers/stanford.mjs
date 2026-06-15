@@ -67,3 +67,56 @@ export function parseStanfordPersons(text) {
     return [];
   }
 }
+
+/**
+ * Stanford EE (https://ee.stanford.edu/people/faculty) — "orglist" HTML layout.
+ * <h3 class="orglist__display-name"><a href="profiles.stanford.edu/…">Name</a>
+ *   <small class="orglist__person-title">Title</small></h3>
+ * @param {string} html @returns {ParsedFaculty[]}
+ */
+export function parseStanfordEe(html) {
+  const out = [];
+  // Note: the EE page is partly JS-rendered (only ~10 faculty in static HTML);
+  // OpenAlex covers the rest. Profile links may be Stanford Profiles or lab sites.
+  const re = /orglist__display-name"><a href="(https?:\/\/[^"]+)"[^>]*>([^<]+)<\/a>\s*<small class="orglist__person-title[^"]*">\s*([^<]*?)\s*<\/small>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const fullName = clean(m[2]);
+    const title = clean(m[3]);
+    if (!fullName || /emerit/i.test(title)) continue;
+    out.push({ fullName, title: title || undefined, homepageUrl: m[1], researchThemes: [] });
+  }
+  return out;
+}
+
+/**
+ * Stanford Humanities & Sciences "hb-card" layout (physics, biology — 2026-06).
+ * hb-card__title → <a href="/people/slug">Name</a>; hb-subtitle → title. Links
+ * are relative, so the page URL supplies the origin.
+ * @param {string} html @param {string} pageUrl @returns {ParsedFaculty[]}
+ */
+export function parseStanfordHbCard(html, pageUrl) {
+  let origin = "";
+  try { origin = new URL(pageUrl).origin; } catch { /* keep relative */ }
+  const out = [];
+  const starts = [];
+  const sre = /hb-card__title">/gi;
+  let m;
+  while ((m = sre.exec(html))) starts.push(m.index);
+  for (let i = 0; i < starts.length; i++) {
+    const start = starts[i];
+    if (start == null) continue;
+    const seg = html.slice(start, (starts[i + 1] ?? start + 1200));
+    const a = seg.match(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/i);
+    if (!a) continue;
+    const fullName = clean(a[2]);
+    if (!fullName) continue;
+    const t = seg.match(/hb-subtitle">([^<]*)</i);
+    const title = t ? clean(t[1]) : undefined;
+    if (title && /emerit/i.test(title)) continue;
+    let url = a[1] ?? "";
+    if (url.startsWith("/")) url = origin + url;
+    out.push({ fullName, title, homepageUrl: url || undefined, researchThemes: [] });
+  }
+  return out;
+}
