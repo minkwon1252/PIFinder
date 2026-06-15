@@ -149,8 +149,10 @@ tests cover parsing + resolution + merge.
   wrong matches); exact full-name → confidence 0.85, first+last → 0.70; no confident match → metrics
   stay **missing**, never zero-filled. Strips trailing credentials (", MD, FACS") before matching.
 - `getJson` has a 15s timeout (a stalled connection previously hung the whole run).
-- Verified quality on a sample (Langer, Juejun Hu, Zeldovich, Solomon, …) — all correct; zero
-  enriched rows with works < 3.
+- **Result:** 293 of 649 roster-only faculty enriched (45% confident match) → **688 / 1044
+  professors now have real metrics** (was 395). 356 remain intentionally missing (no confident
+  match — never zero-filled). Zero anomalies (works<3 or null h). Spot-checks correct (Langer h-264,
+  Susskind h-79, Tuller h-76); the ambiguity guard left "Li Wang" missing rather than mis-matched.
 - TODO (3b cont.): pull recent/influential **papers** into `papers`/`professor_papers` (drives
   `publication_recency` in scoring, which still uses a default until papers land); optionally a
   Semantic Scholar / ORCID second pass for faculty OpenAlex misses.
