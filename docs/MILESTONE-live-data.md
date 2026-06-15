@@ -153,9 +153,19 @@ tests cover parsing + resolution + merge.
   professors now have real metrics** (was 395). 356 remain intentionally missing (no confident
   match — never zero-filled). Zero anomalies (works<3 or null h). Spot-checks correct (Langer h-264,
   Susskind h-79, Tuller h-76); the ambiguity guard left "Li Wang" missing rather than mis-matched.
-- TODO (3b cont.): pull recent/influential **papers** into `papers`/`professor_papers` (drives
-  `publication_recency` in scoring, which still uses a default until papers land); optionally a
-  Semantic Scholar / ORCID second pass for faculty OpenAlex misses.
+### 3b (cont.) — papers pass (2026-06-15)
+- **`scripts/seed-papers-openalex.mjs`** — one recent-works call per professor with an `openalex_id`
+  → `papers` + `professor_papers` (year, venue, citations, URL; most-cited recent one flagged
+  `is_influential`). pg.Pool + concurrency 3 + exponential 429 backoff (OpenAlex rate-limited at
+  higher concurrency); idempotent (skips professors that already have papers).
+- **Pipeline** now derives `latestPublicationYear` from `professor_papers` → real
+  `publication_recency` in fit scoring (was a constant default).
+- **Dossier** (`professors/[id]`) shows a "Recent papers" section (linked title, year · venue ·
+  citations, "most cited" badge) with a missing-evidence fallback.
+- **Result:** 664 / 688 professors with metrics now have papers (96.5%); 5,032 papers, 5,227 links,
+  4,593 from 2024+. The 24 without papers return no works from OpenAlex (merged/empty author IDs) —
+  left honestly empty, not fabricated.
+- Optional later: a Semantic Scholar / ORCID second pass for the OpenAlex-miss faculty.
 
 ### 3a — official-page adapter (2026-06-14)
 - **Adapter implemented** (`src/lib/sources/official-page.ts`) — no longer a stub. Robots-aware
