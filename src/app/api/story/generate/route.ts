@@ -4,7 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { loadResearchProfile } from "@/lib/profile";
 import { getLlm, availableProviders } from "@/lib/llm/provider";
 import { checkMonthlyQuota, logLlmUsage } from "@/lib/llm/usage";
+import { loadUserStoryDocs } from "@/lib/documents";
 import { AGENT_ROLES } from "@/lib/agents/roles";
+
+// PDF parsing (unpdf) + the admin client need the Node.js runtime.
+export const runtime = "nodejs";
 
 /**
  * Story generation — Issue 4.
@@ -65,14 +69,22 @@ export async function POST(request: NextRequest) {
   }
 
   const profile = await loadResearchProfile(user.id);
+  const docs = await loadUserStoryDocs(user.id); // CV + optional story file text
+  const docBlock = docs.length
+    ? docs.map((d) => `--- ${d.label} ---\n${d.text}`).join("\n\n")
+    : "(No CV/story file uploaded — rely on the structured profile only.)";
+
   const llm = getLlm(chosenProvider);
   const prompt = [
     "Write an honest, specific application story connecting THIS student to THIS professor's lab.",
-    "Ground EVERY claim ONLY in the student's real profile, project summary, and interests below.",
-    "Do NOT invent experience, publications, awards, skills, or personal connections. If the student's",
-    "background is thin for something, say so plainly instead of fabricating.",
+    "Ground EVERY claim ONLY in the student's real documents and profile below (their actual CV and",
+    "'story' file are the primary evidence). Do NOT invent experience, publications, awards, skills,",
+    "or personal connections. If the student's background is thin for something, say so plainly.",
     "",
-    `STUDENT (their background, goals, and 'story'): ${JSON.stringify(profile)}`,
+    "STUDENT DOCUMENTS (verbatim text from their uploaded CV / story file — primary evidence):",
+    docBlock,
+    "",
+    `STUDENT STRUCTURED PROFILE (goals, interests, targets): ${JSON.stringify(profile)}`,
     "",
     `PROFESSOR / LAB (research identity + themes): ${JSON.stringify(cand)}`,
     "",
@@ -86,10 +98,13 @@ export async function POST(request: NextRequest) {
 
   let result;
   try {
-    result = await llm.complete([
-      { role: "system", content: AGENT_ROLES.story_coach.systemPrompt },
-      { role: "user", content: prompt },
-    ]);
+    result = await llm.complete(
+      [
+        { role: "system", content: AGENT_ROLES.story_coach.systemPrompt },
+        { role: "user", content: prompt },
+      ],
+      { maxTokens: 1500 },
+    );
   } catch (e) {
     const raw = e instanceof Error ? e.message : "unknown error";
     await logLlmUsage({

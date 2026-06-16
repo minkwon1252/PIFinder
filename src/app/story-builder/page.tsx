@@ -29,8 +29,10 @@ export default async function StoryBuilderPage() {
     <AppShell>
       <h1 className="text-2xl font-bold text-brand">Story Builder</h1>
       <p className="mt-1 text-sm text-slate-600">
-        Honest, professor-specific application angles grounded in your real CV. We never invent
-        experience, publications, awards, or connections.
+        Honest, professor-specific application angles grounded in the text of your uploaded CV and
+        &ldquo;story&rdquo; file (PDF or .txt). We never invent experience, publications, awards, or
+        connections. Upload or update files in your{" "}
+        <a href="/onboarding" className="text-brand-accent underline">profile</a>.
       </p>
 
       {/* Usage / quota (Issue 4) */}

@@ -205,9 +205,9 @@ B keeps the single top match per school.
 
 **What feeds the match from _you_:** majors, target degree, research-method preference, interest
 keywords, application area, project summary (keyword-extracted), and target schools/tiers — all from
-your profile. CV and the optional "story" file are stored privately; feeding their *text* into the
-LLM for richer story generation is a planned enhancement (currently the structured profile +
-project summary drive it).
+your profile. Your **CV and optional "story" file** are stored privately and their **text is
+extracted** (PDF via `unpdf`, or .txt/.md — see `lib/documents.ts`) and fed into Story Builder so
+the generated story is grounded in your real background.
 
 ## Local setup
 
