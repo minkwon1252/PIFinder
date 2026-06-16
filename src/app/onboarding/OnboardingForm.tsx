@@ -44,6 +44,7 @@ export function OnboardingForm({
   const [projectSummary, setProjectSummary] = useState(initial?.projectSummary ?? "");
   const [tierMap, setTierMap] = useState<Record<string, string>>(initial?.tierMap ?? {});
   const [cv, setCv] = useState<File | null>(null);
+  const [story, setStory] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -56,17 +57,26 @@ export function OnboardingForm({
     setBusy(true);
     setError(null);
     try {
+      const supabase = createClient();
       let cvPath: string | null = null;
       let cvName: string | null = null;
       if (cv) {
-        const supabase = createClient();
         const path = `${userId}/cv-${Date.now()}-${cv.name}`;
-        const { error: upErr } = await supabase.storage.from("cvs").upload(path, cv, {
-          upsert: false,
-        });
+        const { error: upErr } = await supabase.storage.from("cvs").upload(path, cv, { upsert: false });
         if (upErr) throw new Error(`CV upload failed: ${upErr.message}`);
         cvPath = path;
         cvName = cv.name;
+      }
+
+      // Optional second "story" file (statement, portfolio, anything).
+      let storyPath: string | null = null;
+      let storyName: string | null = null;
+      if (story) {
+        const path = `${userId}/story-${Date.now()}-${story.name}`;
+        const { error: upErr } = await supabase.storage.from("cvs").upload(path, story, { upsert: false });
+        if (upErr) throw new Error(`Story file upload failed: ${upErr.message}`);
+        storyPath = path;
+        storyName = story.name;
       }
 
       const reach = Object.entries(tierMap).filter(([, t]) => t === "reach").map(([n]) => n);
@@ -86,6 +96,8 @@ export function OnboardingForm({
         foundation,
         cvPath,
         cvName,
+        storyPath,
+        storyName,
       });
       if (res?.error) {
         setError(res.error);
@@ -215,6 +227,20 @@ export function OnboardingForm({
         <p className="mt-1 text-xs text-slate-500">
           Stored in a private bucket; only you and admins can access it.
           {isEdit && " Leave empty to keep your current CV."}
+        </p>
+      </div>
+
+      <div>
+        <label className="label">Your &ldquo;story&rdquo; file (optional)</label>
+        <input
+          type="file"
+          accept=".pdf,.doc,.docx,.txt,.md"
+          onChange={(e) => setStory(e.target.files?.[0] ?? null)}
+          className="text-sm"
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          Anything that explains your background, goals, and what you dream of doing — a statement of
+          purpose draft, research summary, or portfolio. Helps tailor your fit and story. Also private.
         </p>
       </div>
 

@@ -20,13 +20,23 @@ export default async function ScreeningPage({ params }: { params: Promise<{ id: 
   const answeredKeys = new Set((answered ?? []).map((a) => a.question_key));
   const remaining = (questions ?? []).filter((q) => !answeredKeys.has(q.key));
   const current = remaining[0];
+  const total = (questions ?? []).length;
+  const doneCount = answeredKeys.size;
+  const iteration = current ? doneCount + 1 : doneCount;
 
   return (
     <AppShell>
-      <h1 className="text-2xl font-bold text-brand">Interactive screening</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-brand">Interactive screening</h1>
+        {total > 0 && (
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+            Refinement iteration {iteration} / {total}
+          </span>
+        )}
+      </div>
       <p className="mt-1 text-sm text-slate-600">
-        Answer discriminating questions to narrow your candidates. We explain what changes after
-        each answer.
+        Each question is one refinement pass — mark your preferences and we re-rank your candidates.
+        You can refine through all {total} questions.
       </p>
 
       {current ? (

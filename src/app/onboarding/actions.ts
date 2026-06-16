@@ -18,6 +18,8 @@ const schema = z.object({
   foundation: z.array(z.string()),
   cvPath: z.string().optional().nullable(),
   cvName: z.string().optional().nullable(),
+  storyPath: z.string().optional().nullable(),
+  storyName: z.string().optional().nullable(),
 });
 
 export async function saveOnboarding(input: unknown): Promise<{ error?: string }> {
@@ -78,15 +80,15 @@ export async function saveOnboarding(input: unknown): Promise<{ error?: string }
   }
   if (appRows.length) await supabase.from("applications").insert(appRows);
 
-  // 5) CV metadata (file already uploaded to private bucket by the client).
+  // 5) Document metadata (files already uploaded to the private bucket by the client).
+  const docs: { user_id: string; kind: string; file_name: string; storage_path: string }[] = [];
   if (data.cvPath && data.cvName) {
-    await supabase.from("uploaded_documents").insert({
-      user_id: user.id,
-      kind: "cv",
-      file_name: data.cvName,
-      storage_path: data.cvPath,
-    });
+    docs.push({ user_id: user.id, kind: "cv", file_name: data.cvName, storage_path: data.cvPath });
   }
+  if (data.storyPath && data.storyName) {
+    docs.push({ user_id: user.id, kind: "statement", file_name: data.storyName, storage_path: data.storyPath });
+  }
+  if (docs.length) await supabase.from("uploaded_documents").insert(docs);
 
   redirect("/dashboard");
 }

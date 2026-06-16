@@ -70,7 +70,10 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
 
       {screening && screening.length > 0 && (
         <section className="card mt-4 border-emerald-200 bg-emerald-50">
-          <h2 className="text-sm font-semibold text-emerald-800">Screening preferences applied</h2>
+          <h2 className="text-sm font-semibold text-emerald-800">
+            Screening preferences applied · {screening.length} refinement iteration
+            {screening.length === 1 ? "" : "s"}
+          </h2>
           <ul className="mt-2 space-y-1 text-xs text-emerald-900">
             {screening.map((s, i) => (
               <li key={i}>
