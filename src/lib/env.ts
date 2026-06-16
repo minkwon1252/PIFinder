@@ -23,13 +23,15 @@ export function serverEnv() {
       .split(",")
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean),
-    llmProvider: process.env.LLM_PROVIDER ?? "mock",
-    llmModel: process.env.LLM_MODEL ?? "claude-opus-4-8",
-    anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
-    openaiApiKey: process.env.OPENAI_API_KEY ?? "",
-    openaiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-    geminiApiKey: process.env.GEMINI_API_KEY ?? "",
-    geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
+    // .trim() guards against a stray space/newline pasted into the dashboard,
+    // which providers reject as an invalid key.
+    llmProvider: (process.env.LLM_PROVIDER ?? "mock").trim(),
+    llmModel: (process.env.LLM_MODEL ?? "claude-opus-4-8").trim(),
+    anthropicApiKey: (process.env.ANTHROPIC_API_KEY ?? "").trim(),
+    openaiApiKey: (process.env.OPENAI_API_KEY ?? "").trim(),
+    openaiModel: (process.env.OPENAI_MODEL ?? "gpt-4o-mini").trim(),
+    geminiApiKey: (process.env.GEMINI_API_KEY ?? "").trim(),
+    geminiModel: (process.env.GEMINI_MODEL ?? "gemini-2.0-flash").trim(),
     openalexMailto: process.env.OPENALEX_MAILTO ?? "",
     semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY ?? "",
     rateLimitRunsPerDay: Number(process.env.RATE_LIMIT_RUNS_PER_DAY ?? "20"),
