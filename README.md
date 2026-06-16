@@ -190,8 +190,10 @@ Copy `.env.example` → `.env.local` (local) / set them in Vercel (production).
 | `SUPABASE_DB_URL` | server-only secret | Postgres URI — **only** for running migrations/seed/allowlist scripts. **Not** needed by the app at runtime (don't set it on Vercel). |
 | `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN` | public | Required email domain (`snu.ac.kr`) |
 | `BOOTSTRAP_ADMIN_EMAILS` | server-only | Comma-separated emails auto-promoted to admin on first login |
-| `LLM_PROVIDER` / `LLM_MODEL` | server-only | Swappable LLM (`mock` \| `anthropic`) |
-| `ANTHROPIC_API_KEY` | server-only secret | LLM key (only if `LLM_PROVIDER=anthropic`). Used by `POST /api/story/generate`; never sent to the browser |
+| `LLM_PROVIDER` | server-only | Default LLM provider: `mock` \| `anthropic` \| `openai` \| `gemini` |
+| `ANTHROPIC_API_KEY` / `LLM_MODEL` | server-only secret | Claude key + model. Used by `POST /api/story/generate`; never sent to the browser |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` | server-only secret | ChatGPT (OpenAI) key + model (default `gpt-4o-mini`) |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | server-only secret | Gemini (Google) key + model (default `gemini-2.0-flash`) |
 | `MONTHLY_STORY_GENERATION_LIMIT` | server-only | Per-user monthly cap on LLM story generations (`0` = unlimited) |
 | `OPENALEX_MAILTO`, `SEMANTIC_SCHOLAR_API_KEY`, `CROSSREF_MAILTO` | server-only | Source adapters (Phase 3) |
 | `RATE_LIMIT_RUNS_PER_DAY` | server-only | Cap on expensive PI Finder runs/user/day |

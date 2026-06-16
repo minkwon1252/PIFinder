@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/profile";
-import { isLlmConfigured } from "@/lib/llm/provider";
+import { availableProviders } from "@/lib/llm/provider";
 import { monthlyUsageSummary } from "@/lib/llm/usage";
 import { StoryGenerator } from "./StoryGenerator";
 
@@ -22,7 +22,8 @@ export default async function StoryBuilderPage() {
   const planByCand = new Map((plans ?? []).map((p) => [p.candidate_id, p]));
 
   const usage = await monthlyUsageSummary(userId, "story_generation");
-  const configured = isLlmConfigured();
+  const providers = availableProviders();
+  const configured = providers.length > 0;
 
   return (
     <AppShell>
@@ -59,6 +60,7 @@ export default async function StoryBuilderPage() {
                     candidateId={s.candidate_id}
                     existing={plan?.sop_angle ?? null}
                     hasPlan={Boolean(plan)}
+                    providers={providers}
                   />
                 </div>
               </div>

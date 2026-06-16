@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { loadResearchProfile } from "@/lib/profile";
-import { getLlm } from "@/lib/llm/provider";
+import { getLlm, availableProviders } from "@/lib/llm/provider";
 import { checkMonthlyQuota, logLlmUsage } from "@/lib/llm/usage";
 import { AGENT_ROLES } from "@/lib/agents/roles";
 
@@ -11,10 +11,15 @@ import { AGENT_ROLES } from "@/lib/agents/roles";
  *
  * Flow: browser → THIS backend route → LLM provider → backend → browser.
  * The provider API key lives only in server env (never in the browser). The
- * route is auth-required, validates input, enforces a per-user monthly quota,
- * logs usage, and grounds output only in the student's real profile/CV.
+ * client may pass a `provider` id (e.g. "openai" | "gemini") to choose among
+ * the configured providers; the backend supplies the matching key. The route is
+ * auth-required, validates input, enforces a per-user monthly quota, logs usage,
+ * and grounds output only in the student's real profile/CV.
  */
-const bodySchema = z.object({ candidateId: z.string().uuid() });
+const bodySchema = z.object({
+  candidateId: z.string().uuid(),
+  provider: z.enum(["anthropic", "openai", "gemini"]).optional(),
+});
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -35,7 +40,10 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "A valid candidateId is required." }, { status: 400 });
   }
-  const { candidateId } = parsed.data;
+  const { candidateId, provider } = parsed.data;
+  // Only honor a requested provider if it's actually configured server-side.
+  const configured = availableProviders().map((p) => p.id);
+  const chosenProvider = provider && configured.includes(provider) ? provider : undefined;
 
   // Per-user monthly quota.
   const quota = await checkMonthlyQuota(user.id, "story_generation");
@@ -57,7 +65,7 @@ export async function POST(request: NextRequest) {
   }
 
   const profile = await loadResearchProfile(user.id);
-  const llm = getLlm();
+  const llm = getLlm(chosenProvider);
   const prompt = `Student profile: ${JSON.stringify(profile)}\n\nProfessor: ${JSON.stringify(
     cand,
   )}\n\nWrite an honest SOP story angle. Do NOT invent experience, publications, awards, or connections. Output sections: SOP angle, School reason, Department reason, CV connection, Email talking points.`;

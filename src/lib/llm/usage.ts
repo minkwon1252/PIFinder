@@ -11,11 +11,16 @@ import type { LlmUsage } from "./provider";
 
 export type LlmFeature = "story_generation";
 
-/** Very rough cost estimate (USD). Tune per provider/model as needed. */
+/** Very rough cost estimate (USD per 1M tokens). Tune per provider/model as needed. */
+const RATES: Record<string, { in: number; out: number }> = {
+  anthropic: { in: 15, out: 75 }, // Opus-class
+  openai: { in: 0.15, out: 0.6 }, // gpt-4o-mini class
+  gemini: { in: 0.1, out: 0.4 }, // flash class (often free-tier)
+};
 function estimateCost(provider: string, usage: LlmUsage): number | null {
-  if (provider !== "anthropic") return 0;
-  // Opus-class rough rates: ~$15 / 1M input, ~$75 / 1M output.
-  const cost = (usage.inputTokens / 1_000_000) * 15 + (usage.outputTokens / 1_000_000) * 75;
+  const r = RATES[provider];
+  if (!r) return 0;
+  const cost = (usage.inputTokens / 1_000_000) * r.in + (usage.outputTokens / 1_000_000) * r.out;
   return Math.round(cost * 1e5) / 1e5;
 }
 
