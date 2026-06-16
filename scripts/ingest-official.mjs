@@ -17,7 +17,7 @@
 import pg from "pg";
 import { MIT_PARSERS } from "../src/lib/sources/parsers/mit.mjs";
 import { parseStanfordPersonsObj, parseStanfordEe, parseStanfordHbCard } from "../src/lib/sources/parsers/stanford.mjs";
-import { parseBerkeleyGrid } from "../src/lib/sources/parsers/berkeley.mjs";
+import { parseBerkeleyGrid, parseBerkeleyEecs, parseOpenBerkeley } from "../src/lib/sources/parsers/berkeley.mjs";
 
 // HTML parsers usable by `kind: "html"` sources.
 const HTML_PARSERS = {
@@ -25,6 +25,8 @@ const HTML_PARSERS = {
   "stanford-ee": parseStanfordEe,
   "stanford-hbcard": parseStanfordHbCard,
   "berkeley-grid": parseBerkeleyGrid,
+  "berkeley-eecs": parseBerkeleyEecs,
+  "openberkeley": parseOpenBerkeley,
 };
 
 const dbUrl = process.env.SUPABASE_DB_URL;
@@ -64,6 +66,10 @@ const SOURCES = [
   { schoolShort: "Stanford", kind: "html", url: "https://biology.stanford.edu/people/faculty", parser: "stanford-hbcard", dept: "BIO" },
   // UC Berkeley MSE (WordPress post-grid) — authoritative dept for Berkeley materials faculty.
   { schoolShort: "UC Berkeley", kind: "html", url: "https://mse.berkeley.edu/people/faculty/", parser: "berkeley-grid", dept: "MSE" },
+  // UC Berkeley EECS (combined) → EE + CS.
+  { schoolShort: "UC Berkeley", kind: "html", url: "https://www2.eecs.berkeley.edu/Faculty/Lists/faculty.html", parser: "berkeley-eecs", route: () => ["EE", "CS"] },
+  // UC Berkeley Chemistry (OpenBerkeley Drupal theme).
+  { schoolShort: "UC Berkeley", kind: "html", url: "https://chemistry.berkeley.edu/people/faculty", parser: "openberkeley", dept: "CHEM" },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

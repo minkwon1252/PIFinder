@@ -6,7 +6,7 @@ import type {
 // Shared, Node+Next-portable parsers (also used by scripts/ingest-official.mjs).
 import { MIT_PARSERS } from "./parsers/mit.mjs";
 import { parseStanfordPersons, parseStanfordEe, parseStanfordHbCard } from "./parsers/stanford.mjs";
-import { parseBerkeleyGrid } from "./parsers/berkeley.mjs";
+import { parseBerkeleyGrid, parseBerkeleyEecs, parseOpenBerkeley } from "./parsers/berkeley.mjs";
 
 /** Combined parser registry. Each parser takes (responseText, url) → faculty. */
 const PARSERS = {
@@ -15,6 +15,8 @@ const PARSERS = {
   "stanford-ee": parseStanfordEe,
   "stanford-hbcard": parseStanfordHbCard,
   "berkeley-grid": parseBerkeleyGrid,
+  "berkeley-eecs": parseBerkeleyEecs,
+  "openberkeley": parseOpenBerkeley,
 };
 
 /**
