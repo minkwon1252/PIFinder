@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
-import { answerScreening } from "./actions";
+import { ScreeningQuestion } from "./ScreeningQuestion";
 
 export default async function ScreeningPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,18 +30,12 @@ export default async function ScreeningPage({ params }: { params: Promise<{ id: 
       </p>
 
       {current ? (
-        <div className="card mt-6">
-          <p className="font-medium">{current.prompt}</p>
-          <form action={answerScreening} className="mt-4 flex flex-wrap gap-2">
-            <input type="hidden" name="runId" value={id} />
-            <input type="hidden" name="questionKey" value={current.key} />
-            {(current.options as string[]).map((opt) => (
-              <button key={opt} name="answer" value={opt} className="btn-ghost text-sm" type="submit">
-                {opt}
-              </button>
-            ))}
-          </form>
-        </div>
+        <ScreeningQuestion
+          runId={id}
+          questionKey={current.key}
+          prompt={current.prompt}
+          options={current.options as string[]}
+        />
       ) : (
         <div className="card mt-6 border-emerald-200 bg-emerald-50">
           <p className="text-sm text-emerald-800">

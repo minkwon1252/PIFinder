@@ -20,7 +20,14 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
     )
     .eq("search_run_id", id)
     .order("school_id")
-    .order("rank");
+    .order("total_score", { ascending: false });
+
+  // Screening preferences applied to this run (shown so refinements are visible).
+  const { data: screening } = await supabase
+    .from("screening_answers")
+    .select("answer, effect_note, created_at")
+    .eq("search_run_id", id)
+    .order("created_at", { ascending: true });
 
   if (!run) {
     return (
@@ -46,6 +53,19 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
         </h1>
         <span className="text-sm text-slate-500">Status: {run.status}</span>
       </div>
+
+      {screening && screening.length > 0 && (
+        <section className="card mt-4 border-emerald-200 bg-emerald-50">
+          <h2 className="text-sm font-semibold text-emerald-800">Screening preferences applied</h2>
+          <ul className="mt-2 space-y-1 text-xs text-emerald-900">
+            {screening.map((s, i) => (
+              <li key={i}>
+                <span className="font-medium">{s.answer}</span> — {s.effect_note}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {bySchool.size === 0 && (
         <p className="mt-6 text-sm text-slate-500">

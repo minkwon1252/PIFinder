@@ -23,12 +23,22 @@ export async function completeSignIn(input: {
   if (input.code) {
     const { error } = await supabase.auth.exchangeCodeForSession(input.code);
     if (error) exchangeError = error.message;
-  } else if (input.tokenHash && input.type) {
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: input.tokenHash,
-      type: input.type as EmailOtpType,
-    });
-    if (error) exchangeError = error.message;
+  } else if (input.tokenHash) {
+    // Try the type from the link, then common fallbacks — magic-link emails may
+    // be configured with type=email or type=magiclink, and new users arrive via
+    // signup. We stop at the first success.
+    const tryTypes = [input.type, "email", "magiclink", "signup"].filter(Boolean) as EmailOtpType[];
+    const seen = new Set<string>();
+    for (const t of tryTypes) {
+      if (seen.has(t)) continue;
+      seen.add(t);
+      const { error } = await supabase.auth.verifyOtp({ token_hash: input.tokenHash, type: t });
+      if (!error) {
+        exchangeError = null;
+        break;
+      }
+      exchangeError = error.message;
+    }
   } else {
     return { ok: false, error: "missing_code" };
   }
