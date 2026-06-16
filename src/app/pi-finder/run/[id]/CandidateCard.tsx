@@ -10,8 +10,51 @@ interface Candidate {
   total_score: number;
   mismatch_risk: string | null;
   preference_rank: number | null;
+  fit_reason?: string | null;
   professors?: { full_name?: string; research_identity?: string } | null;
   departments?: { abbrev?: string } | null;
+}
+
+interface Scores {
+  keyword_fit: number;
+  method_fit: number;
+  application_domain_fit: number;
+  publication_recency: number;
+  project_overlap: number;
+  dept_school_match: number;
+  lab_activity: number;
+  mentorship_proxy: number;
+}
+
+const FIT_LABELS: { key: keyof Scores; label: string }[] = [
+  { key: "keyword_fit", label: "Keyword overlap" },
+  { key: "project_overlap", label: "Your projects ↔ lab" },
+  { key: "application_domain_fit", label: "Application area" },
+  { key: "method_fit", label: "Research method" },
+  { key: "publication_recency", label: "Recent activity" },
+  { key: "dept_school_match", label: "Your department" },
+];
+
+function FitBreakdown({ scores }: { scores: Scores }) {
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-3">
+      <p className="text-xs font-semibold text-slate-600">How you connect</p>
+      <div className="mt-2 space-y-1.5">
+        {FIT_LABELS.map(({ key, label }) => {
+          const v = Math.max(0, Math.min(1, Number(scores[key] ?? 0)));
+          return (
+            <div key={key} className="flex items-center gap-2">
+              <span className="w-32 shrink-0 text-[11px] text-slate-500">{label}</span>
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-brand-accent" style={{ width: `${Math.round(v * 100)}%` }} />
+              </div>
+              <span className="w-8 shrink-0 text-right text-[11px] text-slate-500">{Math.round(v * 100)}%</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -20,7 +63,17 @@ interface Candidate {
  * shows a labeled badge + thick colored border/ring, and the active button is
  * marked with aria-pressed for assistive tech.
  */
-export function CandidateCard({ candidate, runId }: { candidate: Candidate; runId: string }) {
+export function CandidateCard({
+  candidate,
+  runId,
+  scores = null,
+  showBreakdown = false,
+}: {
+  candidate: Candidate;
+  runId: string;
+  scores?: Scores | null;
+  showBreakdown?: boolean;
+}) {
   const pref = candidate.preference_rank;
   const cardClass =
     pref === 1
@@ -54,6 +107,9 @@ export function CandidateCard({ candidate, runId }: { candidate: Candidate; runI
       {candidate.mismatch_risk && (
         <p className="mt-2 text-xs text-amber-700">⚠ {candidate.mismatch_risk}</p>
       )}
+
+      {/* "How you connect" fit breakdown — always shown for ultimate match. */}
+      {scores && (showBreakdown || candidate.preference_rank != null) && <FitBreakdown scores={scores} />}
 
       {/* Preference controls */}
       <div className="mt-3 flex flex-wrap gap-1.5">

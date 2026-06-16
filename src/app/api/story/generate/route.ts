@@ -66,9 +66,23 @@ export async function POST(request: NextRequest) {
 
   const profile = await loadResearchProfile(user.id);
   const llm = getLlm(chosenProvider);
-  const prompt = `Student profile: ${JSON.stringify(profile)}\n\nProfessor: ${JSON.stringify(
-    cand,
-  )}\n\nWrite an honest SOP story angle. Do NOT invent experience, publications, awards, or connections. Output sections: SOP angle, School reason, Department reason, CV connection, Email talking points.`;
+  const prompt = [
+    "Write an honest, specific application story connecting THIS student to THIS professor's lab.",
+    "Ground EVERY claim ONLY in the student's real profile, project summary, and interests below.",
+    "Do NOT invent experience, publications, awards, skills, or personal connections. If the student's",
+    "background is thin for something, say so plainly instead of fabricating.",
+    "",
+    `STUDENT (their background, goals, and 'story'): ${JSON.stringify(profile)}`,
+    "",
+    `PROFESSOR / LAB (research identity + themes): ${JSON.stringify(cand)}`,
+    "",
+    "Output these sections with these exact headings:",
+    "1. Fit thesis — one short paragraph on how the student's goals align with the lab's research aims.",
+    "2. Dream ↔ lab focus — concretely connect what the student wants to do (their interests/application area/project summary) to the professor's specific research themes.",
+    "3. How you can contribute — based ONLY on the student's real skills and projects, what could they realistically bring to the lab's projects? Be honest about gaps.",
+    "4. SOP angle — a draft paragraph for the statement of purpose.",
+    "5. Email talking points — 3 short bullets for a first email to this professor.",
+  ].join("\n");
 
   let result;
   try {

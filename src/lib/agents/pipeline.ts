@@ -30,6 +30,8 @@ export async function runPiFinder(params: {
   const { data: schools } = await admin.from("schools").select("id, name, short_name");
   const { data: depts } = await admin.from("departments").select("id, abbrev");
   const deptByAbbrev = new Map((depts ?? []).map((d) => [d.abbrev, d.id]));
+  // The student's primary major department — professors in it are preferred.
+  const majorDeptId = deptByAbbrev.get(profile.majors[0] ?? "MSE");
 
   const candidatesToInsert: any[] = [];
 
@@ -103,7 +105,8 @@ export async function runPiFinder(params: {
         applicationArea: profile.applicationArea,
         latestPublicationYear,
         projectKeywords: profile.projectKeywords,
-        deptSchoolMatch: true,
+        // Prefer the student's own major department (others still appear, ranked lower).
+        deptSchoolMatch: a.department_id === majorDeptId,
         labActivity: metrics?.works_count ? Math.min(1, metrics.works_count / 200) : 0.5,
         mentorshipProxy: 0.5,
         dataCompleteness: avgConf,

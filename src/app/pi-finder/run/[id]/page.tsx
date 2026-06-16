@@ -29,6 +29,20 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
     .eq("search_run_id", id)
     .order("created_at", { ascending: true });
 
+  // Score components (for the "how you connect" fit breakdown).
+  const candidateIds = (candidates ?? []).map((c: any) => c.id);
+  const { data: scores } = candidateIds.length
+    ? await supabase
+        .from("candidate_scores")
+        .select(
+          "candidate_id, keyword_fit, method_fit, application_domain_fit, publication_recency, project_overlap, dept_school_match, lab_activity, mentorship_proxy, explanation",
+        )
+        .in("candidate_id", candidateIds)
+    : { data: [] };
+  const scoreByCand = new Map((scores ?? []).map((s: any) => [s.candidate_id, s]));
+
+  const isUltimate = run?.mode === "ultimate_match";
+
   if (!run) {
     return (
       <AppShell>
@@ -78,9 +92,15 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
         {[...bySchool.entries()].map(([school, cands]) => (
           <section key={school}>
             <h2 className="text-lg font-semibold">{school}</h2>
-            <div className="mt-2 grid gap-3 md:grid-cols-3">
+            <div className={`mt-2 grid gap-3 ${isUltimate ? "md:grid-cols-1" : "md:grid-cols-3"}`}>
               {cands.map((c: any) => (
-                <CandidateCard key={c.id} candidate={c} runId={id} />
+                <CandidateCard
+                  key={c.id}
+                  candidate={c}
+                  runId={id}
+                  scores={scoreByCand.get(c.id) ?? null}
+                  showBreakdown={isUltimate}
+                />
               ))}
             </div>
           </section>
