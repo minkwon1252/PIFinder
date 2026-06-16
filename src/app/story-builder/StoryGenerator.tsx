@@ -27,12 +27,14 @@ export function StoryGenerator({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
   const [angle, setAngle] = useState<string | null>(existing ?? null);
   const [provider, setProvider] = useState<string>(providers[0]?.id ?? "");
 
   async function generate() {
     setBusy(true);
     setError(null);
+    setDetail(null);
     try {
       const res = await fetch("/api/story/generate", {
         method: "POST",
@@ -42,6 +44,7 @@ export function StoryGenerator({
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Generation failed.");
+        setDetail(data.detail ?? null);
       } else {
         setAngle(data.sopAngle ?? "");
         router.refresh();
@@ -81,6 +84,11 @@ export function StoryGenerator({
         </button>
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {detail && (
+        <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap rounded bg-red-50 p-2 text-xs text-red-700">
+          {detail}
+        </pre>
+      )}
       {angle && (
         <pre className="mt-3 whitespace-pre-wrap rounded bg-slate-50 p-3 text-sm text-slate-700">
           {angle}

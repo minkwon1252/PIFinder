@@ -77,17 +77,28 @@ export async function POST(request: NextRequest) {
       { role: "user", content: prompt },
     ]);
   } catch (e) {
+    const raw = e instanceof Error ? e.message : "unknown error";
     await logLlmUsage({
       userId: user.id,
       feature: "story_generation",
       provider: llm.id,
       model: llm.model,
       success: false,
-      errorType: e instanceof Error ? e.message.slice(0, 200) : "unknown",
+      errorType: raw.slice(0, 200),
     });
-    console.error("[story/generate] LLM call failed:", e);
+    console.error("[story/generate] LLM call failed:", raw);
+    // Sanitize: strip anything that looks like a bearer/key, cap length. Provider
+    // error reasons (bad key / model not found / quota) are safe to surface and
+    // help the user fix configuration.
+    const detail = raw
+      .replace(/Bearer\s+[A-Za-z0-9._-]+/g, "Bearer ***")
+      .replace(/(key|token)["':=\s]+[A-Za-z0-9._-]{12,}/gi, "$1 ***")
+      .slice(0, 400);
     return NextResponse.json(
-      { error: "Story generation failed. Please try again shortly." },
+      {
+        error: `Story generation failed via ${llm.id} (${llm.model}). Check the provider key/model in Vercel.`,
+        detail,
+      },
       { status: 502 },
     );
   }
