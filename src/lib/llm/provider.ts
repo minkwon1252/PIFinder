@@ -6,24 +6,46 @@ import { serverEnv } from "@/lib/env";
  * `LlmProvider` interface, so providers can be changed via env without code
  * changes. Default is "mock" so the app runs with no API keys.
  *
- * To add the latest Claude models in production, set LLM_PROVIDER=anthropic and
- * LLM_MODEL=claude-opus-4-8 (see .env.example) and implement the call below.
+ * SECURITY: provider API keys are read from server-only env here and never
+ * reach the browser. All callers run server-side (server actions / route
+ * handlers).
  */
 export interface LlmMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
+export interface LlmUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
+export interface LlmResult {
+  text: string;
+  usage: LlmUsage;
+}
+
 export interface LlmProvider {
   readonly id: string;
-  complete(messages: LlmMessage[], opts?: { maxTokens?: number }): Promise<string>;
+  readonly model: string;
+  complete(messages: LlmMessage[], opts?: { maxTokens?: number }): Promise<LlmResult>;
+}
+
+/** Rough token estimate when the provider doesn't report usage (~4 chars/token). */
+export function estimateTokens(text: string): number {
+  return Math.max(1, Math.ceil((text ?? "").length / 4));
 }
 
 class MockProvider implements LlmProvider {
   readonly id = "mock";
-  async complete(messages: LlmMessage[]): Promise<string> {
+  readonly model = "mock";
+  async complete(messages: LlmMessage[]): Promise<LlmResult> {
     const last = messages[messages.length - 1]?.content ?? "";
-    return `# [MOCK LLM OUTPUT]\n\nThis is a deterministic placeholder. Configure LLM_PROVIDER to enable a real model.\n\nPrompt echo (truncated): ${last.slice(0, 240)}`;
+    const text = `# [MOCK LLM OUTPUT]\n\nThis is a deterministic placeholder. Set LLM_PROVIDER=anthropic and ANTHROPIC_API_KEY to enable a real model.\n\nPrompt echo (truncated): ${last.slice(0, 240)}`;
+    const inputTokens = messages.reduce((n, m) => n + estimateTokens(m.content), 0);
+    const outputTokens = estimateTokens(text);
+    return { text, usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens } };
   }
 }
 
@@ -31,10 +53,10 @@ class AnthropicProvider implements LlmProvider {
   readonly id = "anthropic";
   constructor(
     private apiKey: string,
-    private model: string,
+    readonly model: string,
   ) {}
 
-  async complete(messages: LlmMessage[], opts?: { maxTokens?: number }): Promise<string> {
+  async complete(messages: LlmMessage[], opts?: { maxTokens?: number }): Promise<LlmResult> {
     const system = messages.find((m) => m.role === "system")?.content;
     const rest = messages.filter((m) => m.role !== "system");
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -55,12 +77,16 @@ class AnthropicProvider implements LlmProvider {
       throw new Error(`Anthropic API error ${res.status}: ${await res.text()}`);
     }
     const json = await res.json();
-    return json.content?.[0]?.text ?? "";
+    const text = json.content?.[0]?.text ?? "";
+    const inputTokens = json.usage?.input_tokens ?? messages.reduce((n, m) => n + estimateTokens(m.content), 0);
+    const outputTokens = json.usage?.output_tokens ?? estimateTokens(text);
+    return { text, usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens } };
   }
 }
 
 let cached: LlmProvider | null = null;
 
+/** Returns the configured provider. Throws only if a real provider is selected but misconfigured. */
 export function getLlm(): LlmProvider {
   if (cached) return cached;
   const { llmProvider, llmModel, anthropicApiKey } = serverEnv();
@@ -70,4 +96,10 @@ export function getLlm(): LlmProvider {
     cached = new MockProvider();
   }
   return cached;
+}
+
+/** True when a real (non-mock) provider is configured. */
+export function isLlmConfigured(): boolean {
+  const { llmProvider, anthropicApiKey } = serverEnv();
+  return llmProvider === "anthropic" && Boolean(anthropicApiKey);
 }

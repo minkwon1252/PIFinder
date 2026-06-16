@@ -1,7 +1,9 @@
 import { AppShell } from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/profile";
-import { generateStory } from "./actions";
+import { isLlmConfigured } from "@/lib/llm/provider";
+import { monthlyUsageSummary } from "@/lib/llm/usage";
+import { StoryGenerator } from "./StoryGenerator";
 
 export default async function StoryBuilderPage() {
   const session = await getSessionProfile();
@@ -10,16 +12,17 @@ export default async function StoryBuilderPage() {
 
   const { data: saved } = await supabase
     .from("shortlists")
-    .select(
-      "candidate_id, candidate_professors(professors(full_name), schools(name))",
-    )
+    .select("candidate_id, candidate_professors(professors(full_name), schools(name))")
     .eq("user_id", userId);
 
   const { data: plans } = await supabase
     .from("story_plans")
-    .select("candidate_id, sop_angle, school_reason, department_reason")
+    .select("candidate_id, sop_angle")
     .eq("user_id", userId);
   const planByCand = new Map((plans ?? []).map((p) => [p.candidate_id, p]));
+
+  const usage = await monthlyUsageSummary(userId, "story_generation");
+  const configured = isLlmConfigured();
 
   return (
     <AppShell>
@@ -29,31 +32,35 @@ export default async function StoryBuilderPage() {
         experience, publications, awards, or connections.
       </p>
 
+      {/* Usage / quota (Issue 4) */}
+      <div className="card mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+        <span className="text-slate-600">
+          This month: <strong>{usage.requests}</strong>
+          {usage.limit > 0 && <> / {usage.limit}</>} story generations
+          {usage.tokens > 0 && <> · ~{usage.tokens.toLocaleString()} tokens</>}
+        </span>
+        {!configured && (
+          <span className="text-amber-700">
+            Demo mode — generations use a placeholder model until an API key is configured.
+          </span>
+        )}
+      </div>
+
       {saved?.length ? (
         <div className="mt-6 space-y-4">
           {saved.map((s: any) => {
             const plan = planByCand.get(s.candidate_id);
             return (
               <div key={s.candidate_id} className="card">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{s.candidate_professors?.professors?.full_name}</p>
-                    <p className="text-xs text-slate-500">
-                      {s.candidate_professors?.schools?.name}
-                    </p>
-                  </div>
-                  <form action={generateStory}>
-                    <input type="hidden" name="candidateId" value={s.candidate_id} />
-                    <button className="btn-primary text-sm">
-                      {plan ? "Regenerate" : "Generate story"}
-                    </button>
-                  </form>
+                <p className="font-medium">{s.candidate_professors?.professors?.full_name}</p>
+                <p className="text-xs text-slate-500">{s.candidate_professors?.schools?.name}</p>
+                <div className="mt-3">
+                  <StoryGenerator
+                    candidateId={s.candidate_id}
+                    existing={plan?.sop_angle ?? null}
+                    hasPlan={Boolean(plan)}
+                  />
                 </div>
-                {plan?.sop_angle && (
-                  <pre className="mt-3 whitespace-pre-wrap rounded bg-slate-50 p-3 text-sm text-slate-700">
-                    {plan.sop_angle}
-                  </pre>
-                )}
               </div>
             );
           })}

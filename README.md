@@ -191,7 +191,8 @@ Copy `.env.example` → `.env.local` (local) / set them in Vercel (production).
 | `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN` | public | Required email domain (`snu.ac.kr`) |
 | `BOOTSTRAP_ADMIN_EMAILS` | server-only | Comma-separated emails auto-promoted to admin on first login |
 | `LLM_PROVIDER` / `LLM_MODEL` | server-only | Swappable LLM (`mock` \| `anthropic`) |
-| `ANTHROPIC_API_KEY` | server-only secret | LLM key (only if `LLM_PROVIDER=anthropic`) |
+| `ANTHROPIC_API_KEY` | server-only secret | LLM key (only if `LLM_PROVIDER=anthropic`). Used by `POST /api/story/generate`; never sent to the browser |
+| `MONTHLY_STORY_GENERATION_LIMIT` | server-only | Per-user monthly cap on LLM story generations (`0` = unlimited) |
 | `OPENALEX_MAILTO`, `SEMANTIC_SCHOLAR_API_KEY`, `CROSSREF_MAILTO` | server-only | Source adapters (Phase 3) |
 | `RATE_LIMIT_RUNS_PER_DAY` | server-only | Cap on expensive PI Finder runs/user/day |
 

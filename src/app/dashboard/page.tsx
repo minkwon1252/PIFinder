@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/profile";
 import { TierBadge } from "@/components/TierBadge";
+import { RunRow } from "./RunRow";
 
 export default async function DashboardPage() {
   const session = await getSessionProfile();
@@ -13,7 +14,7 @@ export default async function DashboardPage() {
     supabase.from("applications").select("tier, schools(name)").eq("user_id", userId),
     supabase
       .from("search_runs")
-      .select("id, mode, status, created_at")
+      .select("id, mode, status, nickname, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(5),
@@ -71,12 +72,7 @@ export default async function DashboardPage() {
           {runs?.length ? (
             <ul className="mt-3 space-y-2 text-sm">
               {runs.map((r) => (
-                <li key={r.id} className="flex justify-between">
-                  <Link href={`/pi-finder/run/${r.id}`} className="text-brand-accent">
-                    {r.mode === "ultimate_match" ? "Ultimate match" : "Department list"}
-                  </Link>
-                  <span className="text-slate-500">{r.status}</span>
-                </li>
+                <RunRow key={r.id} run={r as any} />
               ))}
             </ul>
           ) : (

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { startPiFinderRun } from "./actions";
 import { RunButton } from "./RunButton";
@@ -48,6 +49,22 @@ export default async function PiFinderPage({
           </p>
           <RunButton label="Run ultimate match" />
         </form>
+      </div>
+
+      {/* Mode C — manual search (no automated matching, no LLM). Visually distinct. */}
+      <div className="mt-4 card border-l-4 border-l-brand-accent bg-slate-50">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="font-semibold">Mode C · Manual database search</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Search the professor database yourself by name, university, department, or research
+              keywords — no automated matching or AI. Open a profile or save results to your shortlist.
+            </p>
+          </div>
+          <Link href="/pi-finder/search" className="btn-primary shrink-0 text-sm">
+            Open search →
+          </Link>
+        </div>
       </div>
 
       <p className="mt-6 text-xs text-slate-500">

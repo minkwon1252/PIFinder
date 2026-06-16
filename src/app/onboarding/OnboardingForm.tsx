@@ -10,22 +10,39 @@ const DEPT_OPTIONS = [
   "AeroE", "CEE", "ISE",
 ];
 
+export interface OnboardingInitial {
+  major1: string;
+  major2: string;
+  targetDegree: string;
+  interests: string[];
+  method: string;
+  applicationArea: string;
+  projectSummary: string;
+  tierMap: Record<string, string>;
+}
+
 export function OnboardingForm({
   schools,
   userId,
+  initial = null,
+  isEdit = false,
 }: {
   schools: { id: string; name: string }[];
   userId: string;
+  initial?: OnboardingInitial | null;
+  isEdit?: boolean;
 }) {
   const router = useRouter();
-  const [major1, setMajor1] = useState("MSE");
-  const [major2, setMajor2] = useState("");
-  const [targetDegree, setTargetDegree] = useState("undecided");
-  const [interests, setInterests] = useState(["", "", ""]);
-  const [method, setMethod] = useState("unknown");
-  const [applicationArea, setApplicationArea] = useState("");
-  const [projectSummary, setProjectSummary] = useState("");
-  const [tierMap, setTierMap] = useState<Record<string, string>>({});
+  const [major1, setMajor1] = useState(initial?.major1 ?? "MSE");
+  const [major2, setMajor2] = useState(initial?.major2 ?? "");
+  const [targetDegree, setTargetDegree] = useState(initial?.targetDegree ?? "undecided");
+  const [interests, setInterests] = useState<string[]>(
+    initial?.interests ?? ["", "", ""],
+  );
+  const [method, setMethod] = useState(initial?.method ?? "unknown");
+  const [applicationArea, setApplicationArea] = useState(initial?.applicationArea ?? "");
+  const [projectSummary, setProjectSummary] = useState(initial?.projectSummary ?? "");
+  const [tierMap, setTierMap] = useState<Record<string, string>>(initial?.tierMap ?? {});
   const [cv, setCv] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -197,12 +214,13 @@ export function OnboardingForm({
         />
         <p className="mt-1 text-xs text-slate-500">
           Stored in a private bucket; only you and admins can access it.
+          {isEdit && " Leave empty to keep your current CV."}
         </p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button type="submit" disabled={busy} className="btn-primary">
-        {busy ? "Saving…" : "Save research profile"}
+        {busy ? "Saving…" : isEdit ? "Save changes" : "Save research profile"}
       </button>
     </form>
   );

@@ -30,5 +30,6 @@ export function serverEnv() {
     openalexMailto: process.env.OPENALEX_MAILTO ?? "",
     semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY ?? "",
     rateLimitRunsPerDay: Number(process.env.RATE_LIMIT_RUNS_PER_DAY ?? "20"),
+    monthlyStoryGenerationLimit: Number(process.env.MONTHLY_STORY_GENERATION_LIMIT ?? "30"),
   };
 }

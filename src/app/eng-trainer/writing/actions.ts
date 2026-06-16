@@ -26,7 +26,7 @@ export async function submitWriting(formData: FormData): Promise<void> {
   let feedback: Record<string, string> = heuristicFeedback(response);
 
   if (llm.id !== "mock") {
-    const text = await llm.complete([
+    const { text } = await llm.complete([
       { role: "system", content: AGENT_ROLES.eng_trainer.systemPrompt },
       {
         role: "user",
