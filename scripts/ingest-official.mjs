@@ -17,9 +17,15 @@
 import pg from "pg";
 import { MIT_PARSERS } from "../src/lib/sources/parsers/mit.mjs";
 import { parseStanfordPersonsObj, parseStanfordEe, parseStanfordHbCard } from "../src/lib/sources/parsers/stanford.mjs";
+import { parseBerkeleyGrid } from "../src/lib/sources/parsers/berkeley.mjs";
 
 // HTML parsers usable by `kind: "html"` sources.
-const HTML_PARSERS = { ...MIT_PARSERS, "stanford-ee": parseStanfordEe, "stanford-hbcard": parseStanfordHbCard };
+const HTML_PARSERS = {
+  ...MIT_PARSERS,
+  "stanford-ee": parseStanfordEe,
+  "stanford-hbcard": parseStanfordHbCard,
+  "berkeley-grid": parseBerkeleyGrid,
+};
 
 const dbUrl = process.env.SUPABASE_DB_URL;
 if (!dbUrl) { console.error("ERROR: SUPABASE_DB_URL is not set."); process.exit(1); }
@@ -56,6 +62,8 @@ const SOURCES = [
   { schoolShort: "Stanford", kind: "html", url: "https://ee.stanford.edu/people/faculty", parser: "stanford-ee", dept: "EE" },
   { schoolShort: "Stanford", kind: "html", url: "https://physics.stanford.edu/people/faculty", parser: "stanford-hbcard", dept: "PHYS" },
   { schoolShort: "Stanford", kind: "html", url: "https://biology.stanford.edu/people/faculty", parser: "stanford-hbcard", dept: "BIO" },
+  // UC Berkeley MSE (WordPress post-grid) — authoritative dept for Berkeley materials faculty.
+  { schoolShort: "UC Berkeley", kind: "html", url: "https://mse.berkeley.edu/people/faculty/", parser: "berkeley-grid", dept: "MSE" },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -100,7 +108,10 @@ async function main() {
 
   let totMatched = 0, totInserted = 0, totAffil = 0, totHomepage = 0, totFaculty = 0;
 
-  for (const src of SOURCES) {
+  const sources = process.env.ONLY_SCHOOL
+    ? SOURCES.filter((s) => s.schoolShort === process.env.ONLY_SCHOOL)
+    : SOURCES;
+  for (const src of sources) {
     const sId = schoolId.get(src.schoolShort);
     if (!sId) { console.warn(`! unknown school ${src.schoolShort}`); continue; }
     process.stdout.write(`\n→ ${src.schoolShort} ${src.url}\n`);
