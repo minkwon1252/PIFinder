@@ -52,16 +52,26 @@ and is editable anytime from **Profile**.
 Your home base: jump into PI Finder, view saved professors, and track application requirements.
 
 ### 3. PI Finder — the core feature
-Runs a multi-step pipeline that, for your targets, produces a **ranked list of professors** with
-an **explainable fit score** and **evidence for every claim**:
+Produces a **ranked list of professors** for your targets with an **explainable fit score** and
+**evidence for every claim**. Three modes:
 
-1. Start a run from **PI Finder**.
-2. Answer a short **screening** questionnaire that sharpens the match to your interests.
-3. Review results: each candidate shows a fit score broken into components (not just a single
-   number), plus tier (Reach / Target / Foundation) and the sources behind every professor detail.
-4. Open a professor's **dossier** for the full picture: affiliations, bibliometric signals,
-   representative papers, and lab info — each tagged as **verified fact**, **inferred fit**,
-   **your info**, or **missing/uncertain** so you always know what's evidence vs. inference.
+- **Mode A · Department list** — for each target school + relevant department, the top three
+  professors.
+- **Mode B · Ultimate match** — the single strongest match per school, with a full "how you connect"
+  fit breakdown.
+- **Mode C · Manual database search** — search the professor database yourself (name, university,
+  department, keywords) with no automated matching or AI; open a profile or save to your shortlist.
+
+Then:
+1. Start a run (a fun-facts overlay keeps you company while it computes — it can take up to a minute).
+2. **Interactive screening:** for each question, mark your top preference (turns **blue**) and
+   optionally a second (**green**). Each pass re-ranks your candidates and shows the iteration number;
+   the results page lists exactly what changed.
+3. Review results: each candidate shows the fit score broken into components, tier
+   (Reach / Target / Foundation), and the sources behind every detail. Your own major department is
+   preferred in the ranking, but neighbouring departments still appear.
+4. Open a professor's **dossier**: affiliations, bibliometrics, recent papers, and lab info — each
+   tagged as **verified fact**, **inferred fit**, **your info**, or **missing/uncertain**.
 
 > **Honesty guarantee:** PIFinder never invents professor details, metrics, or papers. Sample/seed
 > data is labeled `[SAMPLE]` and shown as low-confidence — never treat it as real.
@@ -71,9 +81,12 @@ Save professors you like, **eliminate** ones you don't, and **revive** eliminate
 change your mind. Keeps your decision history so a run doesn't lose your judgments.
 
 ### 5. Story Builder
-For a saved professor, get help shaping your **statement-of-purpose angle** — grounded **only** in
-your real CV and projects. It will not fabricate experience, publications, awards, or connections;
-it helps you frame what you actually have.
+For a saved professor, generate an honest application story (via a real LLM — **Claude, ChatGPT, or
+Gemini**, whichever you pick from the Model dropdown). It connects **your dream/background to the
+lab's research aims** and **how you could contribute**, grounded **only** in your real profile, CV,
+and projects — it never fabricates experience, publications, awards, or connections. Your monthly
+usage is shown and capped. Upload your **CV** and an optional **"story" file** (statement, portfolio)
+in your profile to make the fit richer.
 
 ### 6. ENG Trainer
 - **Writing:** TOEFL-style writing practice.
@@ -153,6 +166,48 @@ tests/                 vitest unit tests (gate, scoring, expansion, freshness)
 Bibliometric Analyst, Fit Ranker, Screening, Professor-level Reviewer, Story Coach, Secretary,
 ENG Trainer. The PI Finder run is orchestrated in `lib/agents/pipeline.ts`. Every professor claim
 must trace to a `professor_sources` record.
+
+## Matching algorithm
+
+PI Finder ranks professors with a **transparent, weighted, additive fit score** — no LLM is used for
+matching (the LLM is only for Story Builder / ENG Trainer). Pipeline: `lib/agents/pipeline.ts`;
+scoring: `lib/scoring/fit.ts`; department scope: `lib/department-expansion.ts`.
+
+**1. Candidate set (which professors are considered).** For each target school, `expandDepartments`
+returns the departments to search based on your **major + its adjacent departments + keyword-driven
+additions + tier breadth** (Foundation = focused, Target = +closely-related, Reach = broad). So you
+always see beyond your own major; your major is then **preferred in the ranking** (not the only
+option). Professors affiliated with those departments at that school become candidates.
+
+**2. Per-candidate fit score (`scoreFit`), 0–100.** Eight components, each 0–1, weighted:
+
+| Component | Weight | How it's computed |
+|---|---|---|
+| `keyword_fit` | 0.26 | Jaccard overlap of your interest keywords vs. the professor's research themes |
+| `project_overlap` | 0.18 | Jaccard overlap of keywords from your project summary vs. the themes |
+| `method_fit` | 0.14 | Your preferred method (experimental/computational/…) vs. the lab's style |
+| `application_domain_fit` | 0.14 | Whether your application area appears in the lab's themes |
+| `publication_recency` | 0.10 | How recently the lab has published (from ingested papers) |
+| `dept_school_match` | 0.08 | 1 if the professor is in **your major department**, else 0 |
+| `lab_activity` | 0.05 | Normalized recent works count (proxy for an active lab) |
+| `mentorship_proxy` | 0.05 | Placeholder proxy for mentorship accessibility |
+
+The weighted sum is then reduced by a **risk penalty** (up to 0.2) that grows as the professor's
+source data gets less complete/stale — so thinly-evidenced matches don't rank above well-evidenced
+ones. Every component + a human-readable explanation is stored in `candidate_scores`, which powers
+the "How you connect" breakdown in the UI.
+
+**3. Refinement (interactive screening).** Each screening question lets you mark up to two ranked
+preferences; `answerScreening` boosts the `total_score` of candidates whose themes/identity match
+(Preference 1 weighted more than Preference 2) and records what changed. The results page re-sorts by
+the updated score — so refining visibly re-ranks. Mode A keeps the top 3 per school/department; Mode
+B keeps the single top match per school.
+
+**What feeds the match from _you_:** majors, target degree, research-method preference, interest
+keywords, application area, project summary (keyword-extracted), and target schools/tiers — all from
+your profile. CV and the optional "story" file are stored privately; feeding their *text* into the
+LLM for richer story generation is a planned enhancement (currently the structured profile +
+project summary drive it).
 
 ## Local setup
 
