@@ -31,7 +31,7 @@ export function serverEnv() {
     openaiApiKey: (process.env.OPENAI_API_KEY ?? "").trim(),
     openaiModel: (process.env.OPENAI_MODEL ?? "gpt-4o-mini").trim(),
     geminiApiKey: (process.env.GEMINI_API_KEY ?? "").trim(),
-    geminiModel: (process.env.GEMINI_MODEL ?? "gemini-2.0-flash").trim(),
+    geminiModel: (process.env.GEMINI_MODEL ?? "gemini-2.5-flash").trim(),
     openalexMailto: process.env.OPENALEX_MAILTO ?? "",
     semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY ?? "",
     rateLimitRunsPerDay: Number(process.env.RATE_LIMIT_RUNS_PER_DAY ?? "20"),

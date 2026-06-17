@@ -248,7 +248,7 @@ Copy `.env.example` → `.env.local` (local) / set them in Vercel (production).
 | `LLM_PROVIDER` | server-only | Default LLM provider: `mock` \| `anthropic` \| `openai` \| `gemini` |
 | `ANTHROPIC_API_KEY` / `LLM_MODEL` | server-only secret | Claude key + model. Used by `POST /api/story/generate`; never sent to the browser |
 | `OPENAI_API_KEY` / `OPENAI_MODEL` | server-only secret | ChatGPT (OpenAI) key + model (default `gpt-4o-mini`) |
-| `GEMINI_API_KEY` / `GEMINI_MODEL` | server-only secret | Gemini (Google) key + model (default `gemini-2.0-flash`) |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | server-only secret | Gemini (Google) key + model (default `gemini-2.5-flash`) |
 | `MONTHLY_STORY_GENERATION_LIMIT` | server-only | Per-user monthly cap on LLM story generations (`0` = unlimited) |
 | `OPENALEX_MAILTO`, `SEMANTIC_SCHOLAR_API_KEY`, `CROSSREF_MAILTO` | server-only | Source adapters (Phase 3) |
 | `RATE_LIMIT_RUNS_PER_DAY` | server-only | Cap on expensive PI Finder runs/user/day |
