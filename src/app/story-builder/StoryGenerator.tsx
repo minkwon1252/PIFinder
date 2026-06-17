@@ -30,11 +30,15 @@ export function StoryGenerator({
   const [detail, setDetail] = useState<string | null>(null);
   const [angle, setAngle] = useState<string | null>(existing ?? null);
   const [provider, setProvider] = useState<string>(providers[0]?.id ?? "");
+  const [fallback, setFallback] = useState<{ requested: string; used: string; model: string } | null>(null);
+
+  const labelFor = (id: string) => providers.find((p) => p.id === id)?.label ?? id;
 
   async function generate() {
     setBusy(true);
     setError(null);
     setDetail(null);
+    setFallback(null);
     try {
       const res = await fetch("/api/story/generate", {
         method: "POST",
@@ -47,6 +51,11 @@ export function StoryGenerator({
         setDetail(data.detail ?? null);
       } else {
         setAngle(data.sopAngle ?? "");
+        setFallback(
+          data.fellBack
+            ? { requested: data.requestedProvider, used: data.provider, model: data.model }
+            : null,
+        );
         router.refresh();
       }
     } catch {
@@ -88,6 +97,12 @@ export function StoryGenerator({
         <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap rounded bg-red-50 p-2 text-xs text-red-700">
           {detail}
         </pre>
+      )}
+      {angle && fallback && (
+        <p className="mt-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          ⚠️ {labelFor(fallback.requested)} was unavailable (rate limit / high demand), so this story
+          was written by <strong>{labelFor(fallback.used)}</strong> ({fallback.model}) instead.
+        </p>
       )}
       {angle && (
         <pre className="mt-3 whitespace-pre-wrap rounded bg-slate-50 p-3 text-sm text-slate-700">

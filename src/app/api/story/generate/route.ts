@@ -76,7 +76,6 @@ export async function POST(request: NextRequest) {
     ? docs.map((d) => `--- ${d.label} ---\n${d.text}`).join("\n\n")
     : "(No CV/story file uploaded — rely on the structured profile only.)";
 
-  const llm = getLlm(chosenProvider);
   const prompt = [
     "Write an honest, specific application story connecting THIS student to THIS professor's lab.",
     "Ground EVERY claim ONLY in the student's real documents and profile below (their actual CV and",
@@ -98,26 +97,44 @@ export async function POST(request: NextRequest) {
     "5. Email talking points — 3 short bullets for a first email to this professor.",
   ].join("\n");
 
-  let result;
-  try {
-    result = await llm.complete(
-      [
-        { role: "system", content: AGENT_ROLES.story_coach.systemPrompt },
-        { role: "user", content: prompt },
-      ],
-      { maxTokens: 1500 },
-    );
-  } catch (e) {
-    const raw = e instanceof Error ? e.message : "unknown error";
-    await logLlmUsage({
-      userId: user.id,
-      feature: "story_generation",
-      provider: llm.id,
-      model: llm.model,
-      success: false,
-      errorType: raw.slice(0, 200),
-    });
-    console.error("[story/generate] LLM call failed:", raw);
+  // Try the requested/primary provider first, then the other configured ones as
+  // fallbacks. If a provider hits a per-model limit/outage (after its own
+  // retries), we move on so the demo still produces a story from a different
+  // model — and tell the user which model actually wrote it.
+  const primaryLlm = getLlm(chosenProvider);
+  const order = [primaryLlm.id, ...configured.filter((id) => id !== primaryLlm.id)];
+
+  const messages = [
+    { role: "system" as const, content: AGENT_ROLES.story_coach.systemPrompt },
+    { role: "user" as const, content: prompt },
+  ];
+
+  let result: Awaited<ReturnType<(typeof primaryLlm)["complete"]>> | undefined;
+  let usedLlm = primaryLlm;
+  let lastErr: unknown;
+  for (const id of order) {
+    const llm = getLlm(id);
+    try {
+      result = await llm.complete(messages, { maxTokens: 4000 });
+      usedLlm = llm;
+      break;
+    } catch (e) {
+      lastErr = e;
+      const raw = e instanceof Error ? e.message : "unknown error";
+      await logLlmUsage({
+        userId: user.id,
+        feature: "story_generation",
+        provider: llm.id,
+        model: llm.model,
+        success: false,
+        errorType: raw.slice(0, 200),
+      });
+      console.error(`[story/generate] ${llm.id} failed, trying next:`, raw);
+    }
+  }
+
+  if (!result) {
+    const raw = lastErr instanceof Error ? lastErr.message : "unknown error";
     // Sanitize: strip anything that looks like a bearer/key, cap length. Provider
     // error reasons (bad key / model not found / quota) are safe to surface and
     // help the user fix configuration.
@@ -127,18 +144,19 @@ export async function POST(request: NextRequest) {
       .slice(0, 400);
     return NextResponse.json(
       {
-        error: `Story generation failed via ${llm.id} (${llm.model}). Check the provider key/model in Vercel.`,
+        error: `Story generation failed (tried ${order.join(", ")}). Check the provider keys/models in Vercel.`,
         detail,
       },
       { status: 502 },
     );
   }
 
+  const fellBack = usedLlm.id !== primaryLlm.id;
   await logLlmUsage({
     userId: user.id,
     feature: "story_generation",
-    provider: llm.id,
-    model: llm.model,
+    provider: usedLlm.id,
+    model: usedLlm.model,
     usage: result.usage,
     success: true,
   });
@@ -157,5 +175,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Saved usage but failed to store the story." }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, sopAngle: result.text, provider: llm.id });
+  return NextResponse.json({
+    ok: true,
+    sopAngle: result.text,
+    provider: usedLlm.id,
+    model: usedLlm.model,
+    requestedProvider: primaryLlm.id,
+    fellBack,
+  });
 }
