@@ -46,6 +46,37 @@ function estimateUsage(messages: LlmMessage[], text: string): LlmUsage {
   return { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens };
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * fetch() that transparently retries transient provider errors (429 rate limit,
+ * 500/502/503/529 overload) and network blips with exponential backoff + jitter.
+ * Non-transient errors (401/404/...) return immediately so the caller can throw
+ * a clear message. Keeps demos resilient to upstream "high demand" spikes.
+ */
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  { retries = 4, baseDelayMs = 700 }: { retries?: number; baseDelayMs?: number } = {},
+): Promise<Response> {
+  const RETRYABLE = new Set([429, 500, 502, 503, 529]);
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      if (!RETRYABLE.has(res.status) || attempt === retries) return res;
+    } catch (e) {
+      lastErr = e;
+      if (attempt === retries) throw e;
+    }
+    // exp backoff with jitter: ~0.7s, 1.4s, 2.8s, 5.6s
+    await sleep(baseDelayMs * 2 ** attempt + Math.random() * 300);
+  }
+  // Unreachable in practice, but satisfy the type checker.
+  if (lastErr) throw lastErr;
+  return fetch(url, init);
+}
+
 class MockProvider implements LlmProvider {
   readonly id = "mock";
   readonly model = "mock";
@@ -62,7 +93,7 @@ class AnthropicProvider implements LlmProvider {
   async complete(messages: LlmMessage[], opts?: { maxTokens?: number }): Promise<LlmResult> {
     const system = messages.find((m) => m.role === "system")?.content;
     const rest = messages.filter((m) => m.role !== "system");
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": this.apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
@@ -86,7 +117,7 @@ class OpenAIProvider implements LlmProvider {
   readonly id = "openai";
   constructor(private apiKey: string, readonly model: string) {}
   async complete(messages: LlmMessage[], opts?: { maxTokens?: number }): Promise<LlmResult> {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetchWithRetry("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${this.apiKey}`, "content-type": "application/json" },
       body: JSON.stringify({
@@ -116,7 +147,7 @@ class GeminiProvider implements LlmProvider {
     const contents = messages
       .filter((m) => m.role !== "system")
       .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
-    const res = await fetch(
+    const res = await fetchWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`,
       {
         method: "POST",

@@ -9,6 +9,8 @@ import { AGENT_ROLES } from "@/lib/agents/roles";
 
 // PDF parsing (unpdf) + the admin client need the Node.js runtime.
 export const runtime = "nodejs";
+// Allow time for provider retries on transient "high demand" (429/503) spikes.
+export const maxDuration = 60;
 
 /**
  * Story generation — Issue 4.
